@@ -37,6 +37,7 @@ AVAILABLE_MODELS = {
     "minimonkey": "MiniMonkey",
     "moviechat": "MovieChat",
     "mplug_owl_video": "mplug_Owl",
+    "nvlm_d": "NVLM_D",
     "phi3v": "Phi3v",
     "qwen_vl": "Qwen_VL",
     "qwen2_vl": "Qwen2_VL",
