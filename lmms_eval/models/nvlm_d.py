@@ -200,8 +200,10 @@ class NVLM_D(lmms):
                 gen_kwargs["max_new_tokens"] = 1024
             if "temperature" not in gen_kwargs:
                 gen_kwargs["temperature"] = 0
-            # if "until" in gen_kwargs:
-            #     del gen_kwargs["until"]
+            if "top_p" not in gen_kwargs:
+                gen_kwargs["top_p"] = None
+            if "num_beams" not in gen_kwargs:
+                gen_kwargs["num_beams"] = 1
 
             # Process each prompt with its corresponding image
             # prompts = []
@@ -249,9 +251,13 @@ class NVLM_D(lmms):
             # TODO: pass proper arguments to the model
             output_ids = self.model.generate(
                 **inputs,
+                do_sample=True if gen_kwargs["temperature"] > 0 else False,
                 temperature=gen_kwargs["temperature"],
+                num_beams=gen_kwargs["num_beams"],
+                top_p=gen_kwargs["top_p"],
                 max_new_tokens=gen_kwargs["max_new_tokens"],
                 use_cache=self.use_cache,
+                pad_token_id=self.tokenizer.eos_token_id
             )
 
             # Process and collect results
