@@ -30,6 +30,7 @@ cache_dir
 ckpt
 pretrained/
 LLaVA/
+LLaVA-NeXT/
 *logs
 *.isorted
 temp/
