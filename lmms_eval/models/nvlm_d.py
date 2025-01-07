@@ -50,12 +50,15 @@ class NVLM_D(lmms):
         assert kwargs == {}, f"Unexpected kwargs: {kwargs}"
 
         accelerator = Accelerator()
-        if accelerator.num_processes > 1 and device_map == "":
+        if accelerator.num_processes > 1:
             self._device = torch.device(f"cuda:{accelerator.local_process_index}")
             self.device_map = f"cuda:{accelerator.local_process_index}"
-        else:
+        elif accelerator.num_processes == 1 and device_map == "auto":
             self._device = torch.device(device)
             self.device_map = device_map
+        else:
+            self._device = torch.device(f"cuda:{accelerator.local_process_index}")
+            self.device_map = f"cuda:{accelerator.local_process_index}"
 
         if isinstance(dtype, str) and dtype != "auto":
             dtype = getattr(torch, dtype)
@@ -80,7 +83,7 @@ class NVLM_D(lmms):
         self.use_cache = use_cache
         self.add_system_prompt = add_system_prompt
         # Handle distributed setup
-        if accelerator.num_processes > 1 and device_map == "":
+        if accelerator.num_processes > 1:
             assert accelerator.distributed_type in [DistributedType.FSDP, DistributedType.MULTI_GPU, DistributedType.DEEPSPEED]
             
             if accelerator.distributed_type == DistributedType.DEEPSPEED:
