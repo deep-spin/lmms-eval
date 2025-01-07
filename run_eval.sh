@@ -20,7 +20,7 @@ module load openjdk
 # Activate the environment
 source $env_path/bin/activate
 
-mkdir -p $out_root/outs3/
+mkdir -p $out_root/outs_official/
 
 # python -m accelerate.commands.launch \
 #     --num_processes=1 \
@@ -37,10 +37,10 @@ python -m accelerate.commands.launch \
     --num_processes=2 \
     -m lmms_eval \
     --model pangea  \
-    --model_args pretrained="neulab/Pangea-7B",device_map=auto \
-    --tasks cvqa \
+    --model_args pretrained="neulab/Pangea-7B",model_name='Pangea-7B-qwen',device_map=auto \
+    --tasks xmmmu,marvl,m3exam,maxm,xgqa,xm100 \
     --batch_size 1 \
-    --output_path $out_root/outs3/ \
+    --output_path $out_root/outs_official/ \
     --log_samples 
     # --log_samples_suffix llava_next \
 # --tasks xmmmu,marvl,m3exam,maxm,xgqa \

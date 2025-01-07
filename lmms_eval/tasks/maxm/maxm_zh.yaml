@@ -28,7 +28,7 @@ metric_list:
   - metric: relaxed_accuracy
     aggregation: !function utils.maxm_relaxed_ema
     higher_is_better: true
-model_specific_prompt_kwargs:
+lmms_eval_specific_kwargs:
   default:
     pre_prompt: "Given the image and the question, provide a concise answer. "
     post_prompt: "\nAnswer the question using a single word or phrase in Chinese."

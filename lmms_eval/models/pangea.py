@@ -53,7 +53,7 @@ class Pangea(lmms):
         truncation: Optional[bool] = True,
         device: Optional[str] = "cuda:0",
         batch_size: Optional[Union[int, str]] = 1,
-        model_name="pangea-7b-llava-clip-qwen2",
+        model_name='Pangea-7B-qwen', #'Pangea-7B-qwen' recommened in https://huggingface.co/neulab/Pangea-7B , # pangea repo sets this to None, I was using "pangea-7b-llava-clip-qwen2"
         attn_implementation=best_fit_attn_implementation,
         device_map="cuda:0",
         conv_template="qwen_1_5",
@@ -80,25 +80,26 @@ class Pangea(lmms):
             self._device = torch.device(f"cuda:{accelerator.local_process_index}")
             self.device_map = f"cuda:{accelerator.local_process_index}"
 
-        llava_model_args = {
+        model_args = {
             "multimodal": True,
         }
         if customized_config is not None:
-            llava_model_args["customized_config"] = customized_config
+            model_args["customized_config"] = customized_config
         if attn_implementation is not None:
-            llava_model_args["attn_implementation"] = attn_implementation
+            model_args["attn_implementation"] = attn_implementation
         if "use_flash_attention_2" in kwargs:
-            llava_model_args["use_flash_attention_2"] = kwargs["use_flash_attention_2"]
+            model_args["use_flash_attention_2"] = kwargs["use_flash_attention_2"]
         self.model_name = model_name
-        # model_name = model_name if model_name is not None else get_model_name_from_path(pretrained)
-        # model_name = "llava-v1.5-7b" if pretrained == "MBZUAI/PALO-7B" else get_model_name_from_path(pretrained)
+
         try:
             # Try to load the model with the multimodal argument
-            self._tokenizer, self._model, self._image_processor, self._max_length = load_pretrained_model(pretrained, None, model_name, device_map=self.device_map, **llava_model_args)
+            self._tokenizer, self._model, self._image_processor, self._max_length = load_pretrained_model(pretrained, None, model_name, **model_args)
+
         except TypeError:
             # for older versions of LLaVA that don't have multimodal argument
-            llava_model_args.pop("multimodal", None)
-            self._tokenizer, self._model, self._image_processor, self._max_length = load_pretrained_model(pretrained, None, model_name, device_map=self.device_map, **llava_model_args)
+            model_args.pop("multimodal", None)
+            self._tokenizer, self._model, self._image_processor, self._max_length = load_pretrained_model(pretrained, None, model_name, device_map=self.device_map, **model_args)
+        
         self._config = self._model.config
         self.model.eval()
         if tie_weights:
