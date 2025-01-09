@@ -20,6 +20,8 @@ def marvl_process_result(doc, results):
     pred = pred.strip().lower()
     if 'yes' in pred: pred = 'true'
     elif 'no' in pred: pred = 'false'
+    elif "(a)" in pred: pred = 'false'
+    elif "(b)" in pred: pred = 'true'
     if target.strip().lower() in pred:
         return {"exact_match": 1.0}
     return {"exact_match": 0.0}
