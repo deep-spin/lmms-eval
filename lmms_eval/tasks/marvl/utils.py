@@ -1,3 +1,4 @@
+from lmms_eval.utils import eval_logger
 
 def marvl_doc_to_visual(doc):
     return [doc["image"].convert("RGB")]
@@ -14,14 +15,51 @@ def marvl_doc_to_target(doc):
     elif 'false' in answer: return 'false'
     else: raise Exception(f"get target failed for id {doc['id']} - conversations: {conversations}")
 
+
+
+def check_output(doc,output):
+    accepted_answers = {
+    "(b)": "true",
+    "(a)": "false",
+    "false": "false",
+    "true": "true",
+    "false.": "false",
+    "true.": "true",
+    "b (b)": "true",
+    "a (a)": "false",
+    "b": "true",
+    "a": "false",
+    "b (true)": "true",
+    "a (false)": "false",
+    "b.": "true",
+    "a.": "false",
+    "a false": "false",
+    "b true": "true",
+    "a:": "false",
+    "b:": "true",
+    "(b) true": "true",
+    "(a) false": "false",
+    "yes":"true",
+    "no":"false",
+    "yes.":"true",
+    "no.":"false",
+    }
+    out = output.strip().lower()
+    if out in accepted_answers.keys():
+        return accepted_answers[out]
+    else:
+        eval_logger.warning("Model's output not in accepted answers. Doc: {doc}. Falling back to error...")
+        import ipdb;ipdb.set_trace()
+        return None
+
+
 def marvl_process_result(doc, results):
     target = marvl_doc_to_target(doc)
     pred = results[0]
-    pred = pred.strip().lower()
-    if 'yes' in pred: pred = 'true'
-    elif 'no' in pred: pred = 'false'
-    elif "(a)" in pred: pred = 'false'
-    elif "(b)" in pred: pred = 'true'
-    if target.strip().lower() in pred:
+    if target.strip().lower() not in ["true" , "false"]:
+        eval_logger.warning("Target '{target}' needs post-processing. Task: Marvl")
+    out = check_output(doc,pred)
+    if target.strip().lower()==out:
         return {"exact_match": 1.0}
-    return {"exact_match": 0.0}
+    else:
+        return {"exact_match": 0.0}
