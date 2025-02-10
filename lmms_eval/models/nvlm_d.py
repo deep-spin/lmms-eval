@@ -42,6 +42,7 @@ class NVLM_D(lmms):
         trust_remote_code: Optional[bool] = True,
         #attn_implementation: Optional[str] = best_fit_attn_implementation,
         add_system_prompt: Optional[str] = None,
+        tag: Optional[str] = None,
         device_map: str = "",
         use_cache: bool = True,
         **kwargs,
@@ -76,12 +77,12 @@ class NVLM_D(lmms):
             revision=revision,
             trust_remote_code=trust_remote_code
         )
-
         self._tokenizer = self._processor.tokenizer
         self._config = self._model.config
         self.batch_size_per_gpu = int(batch_size)
         self.use_cache = use_cache
         self.add_system_prompt = add_system_prompt
+        self.tag = tag
         # Handle distributed setup
         if accelerator.num_processes > 1:
             assert accelerator.distributed_type in [DistributedType.FSDP, DistributedType.MULTI_GPU, DistributedType.DEEPSPEED]
@@ -239,13 +240,14 @@ class NVLM_D(lmms):
             
             if DEFAULT_IMAGE_TOKEN not in context:
                 context = f"{DEFAULT_IMAGE_TOKEN}\n{context}"
-                
+            
+            if self.tag:
+                context = f"{self.tag} " + context
             # create chat object and apply template
             chat = [{"role": "user", "content": context}]
             if self.add_system_prompt is not None:
                 chat.insert(0, {"role": "system", "content": self.add_system_prompt})
             prompt = self._tokenizer.apply_chat_template(chat, tokenize=False, add_generation_prompt=True)
-
             # Process inputs through the processor
             inputs = self._processor(images=[visual], text=[prompt], return_tensors="pt")
             inputs = {k: v.to(self.device) for k, v in inputs.items()}
