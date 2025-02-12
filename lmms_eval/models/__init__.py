@@ -57,6 +57,7 @@ AVAILABLE_MODELS = {
     "llama_vision": "LlamaVision",
     "aria": "Aria",
     "pangea": "Pangea",
+    "pixtral": "Pixtral",
 }
 
 
