@@ -17,6 +17,31 @@ from mistral_common.tokens.tokenizers.mistral import MistralTokenizer
 from mistral_common.protocol.instruct.messages import UserMessage, TextChunk, ImageURLChunk
 from mistral_common.protocol.instruct.request import ChatCompletionRequest
 
+from transformers import LlavaForConditionalGeneration, AutoProcessor
+from PIL import Image
+from vllm import LLM
+from vllm.sampling_params import SamplingParams
+
+
+import PIL.Image
+import uuid
+from vllm import EngineArgs, LLMEngine
+from vllm import SamplingParams, TokensPrompt
+from vllm.multimodal import MultiModalDataBuiltins
+
+from mistral_common.protocol.instruct.messages import (
+    UserMessage,
+    TextChunk,
+    ImageURLChunk,
+    ImageChunk,
+)
+from PIL import Image
+from mistral_common.protocol.instruct.request import ChatCompletionRequest
+from mistral_common.tokens.tokenizers.mistral import MistralTokenizer
+
+
+
+
 warnings.filterwarnings("ignore")
 from loguru import logger as eval_logger
 
@@ -42,12 +67,9 @@ class Pixtral(lmms):
         self,
         pretrained: str = "mistralai/Pixtral-12B-Base-2409",
         model_path: str = None,
-        revision: str = "main",
         device: str = "cuda",
         dtype: Optional[Union[str, torch.dtype]] = "bfloat16",
         batch_size: int = 1,
-        trust_remote_code: Optional[bool] = True,
-        #attn_implementation: Optional[str] = best_fit_attn_implementation,
         add_system_prompt: Optional[str] = None,
         tag: Optional[str] = None,
         device_map: str = "",
@@ -70,21 +92,19 @@ class Pixtral(lmms):
 
         if isinstance(dtype, str) and dtype != "auto":
             dtype = getattr(torch, dtype)
-            
-        pretrained = self.download_model(pretrained, model_path)
-        self._model = Transformer.from_folder(
-            pretrained,
-            # revision=revision,
-            # trust_remote_code=trust_remote_code,
-            #attn_implementation=attn_implementation
+
+        self.engine_args = EngineArgs(
+            model=pretrained,
+            tokenizer_mode="mistral",
+            enable_chunked_prefill=False,
+            limit_mm_per_prompt=dict(image=4),
+            max_num_batched_tokens=16384,
+            max_model_len=16384,
         )
-        # self._processor = AutoProcessor.from_pretrained(
-        #     pretrained,
-        #     revision=revision,
-        #     trust_remote_code=trust_remote_code
-        # )
-        self._tokenizer = MistralTokenizer.from_file(f"{pretrained}/tekken.json")
-        # self._config = self._model.config
+        self.sampling_params = SamplingParams(temperature=0.0, max_tokens=512)
+        self._engine = LLMEngine.from_engine_args(self.engine_args)
+        self._tokenizer = self._engine.tokenizer.tokenizer.mistral
+        
         self.batch_size_per_gpu = int(batch_size)
         self.use_cache = use_cache
         self.add_system_prompt = add_system_prompt
@@ -233,19 +253,33 @@ class Pixtral(lmms):
                 new_list.append(j)
         return new_list
 
+
+    def create_image_input(self, images, prompt):
+        # tokenize images and text
+        tokenized = self._tokenizer.encode_chat_completion(
+            ChatCompletionRequest(
+                messages=[
+                    UserMessage(
+                        content=[
+                            TextChunk(text=prompt),
+                        ] + [ImageChunk(image=img) for img in images]
+                    )
+                ],
+                model="pixtral",
+            )
+        )
+
+        engine_inputs = TokensPrompt(prompt_token_ids=tokenized.tokens)
+
+        mm_data = MultiModalDataBuiltins(image=images)
+        engine_inputs["multi_modal_data"] = mm_data
+
+        return engine_inputs
+
+
     def generate_until(self, requests: List[Instance]) -> List[str]:
         """Generate text based on the given requests."""
         res = []
-
-        def _collate(x):
-            # the negative sign on len(toks) sorts descending - this has a few advantages:
-            # - time estimates will always be over not underestimates, which is more useful for planning
-            # - to know the size of a batch when going through the list, you know the first one is always the batch
-            #   padded context length. this is useful to simplify the batching logic and more importantly to make
-            #   automatic adaptive batches much much easier to implement
-            # - any OOMs will happen right away rather than near the end
-            toks = self.tok_encode(x[0])
-            return -len(toks), x[0]
 
         def batch_requests(requests, batch_size):
             for i in range(0, len(requests), batch_size):
@@ -287,29 +321,22 @@ class Pixtral(lmms):
             
             if DEFAULT_IMAGE_TOKEN not in context:
                 context = f"{DEFAULT_IMAGE_TOKEN}\n{context}"
-            
             if self.tag:
                 context = f"{self.tag} " + context
             # create chat object and apply template
             chat = [{"role": "user", "content": context}]
             if self.add_system_prompt is not None:
                 chat.insert(0, {"role": "system", "content": self.add_system_prompt})
-
-            breakpoint()
-            completion_request = ChatCompletionRequest(messages=[UserMessage(content=[ImageURLChunk(image_url=visual), TextChunk(text=chat)])])
-
-            encoded = self.tokenizer.encode_chat_completion(completion_request)
-
-            images = encoded.images
-            tokens = encoded.tokens
-
-            out_tokens, _ = generate([tokens], self.model, images=[images], max_tokens=256, temperature=0.35, eos_id=self.tokenizer.instruct_tokenizer.tokenizer.eos_id)
-            result = self.tokenizer.decode(out_tokens[0])
+            
+            try:
+                self._engine.add_request(uuid.uuid4().hex, self.create_image_input([visual], context), self.sampling_params)
+                out = self._engine.step()
+                result = out[0].outputs[0].text
+            except Exception as e:
+                eval_logger.error(f"Error {e} in generating")
+                result = ""
             res.append(result)
             pbar.update(1)
-
-        # Reorder results back to original order
-        # res = re_ords.get_original(res)
         pbar.close()
         return res
 
