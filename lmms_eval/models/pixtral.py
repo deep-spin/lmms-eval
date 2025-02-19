@@ -297,10 +297,6 @@ class Pixtral(lmms):
             res.append(result)
             pbar.update(1)
         pbar.close()
-        for rid, res in enumerate(res):
-            print(rid, res)
-            if rid >100:
-                break
         return res
 
     def generate_until_multi_round(self, requests) -> List[str]:
