@@ -69,8 +69,7 @@ class Pixtral(lmms):
         if isinstance(dtype, str) and dtype != "auto":
             dtype = getattr(torch, dtype)
 
-        self._sampling_params = SamplingParams(max_tokens=8192)
-        self._model = LLM(model=pretrained, tokenizer_mode="mistral")
+        self._model = LLM(model=pretrained, tokenizer_mode="mistral", gpu_memory_utilization=0.7, max_model_len=16384)
         
         self.batch_size_per_gpu = int(batch_size)
         self.use_cache = use_cache
@@ -197,7 +196,6 @@ class Pixtral(lmms):
 
     def tok_encode(self, string: str, left_truncate_len=None, add_special_tokens=None) -> List[int]:
         """Tokenize a string."""
-        breakpoint()
         add_special_tokens = False if add_special_tokens is None else add_special_tokens
         encoding = self.tokenizer.encode(string, add_special_tokens=add_special_tokens)
         if left_truncate_len:
@@ -252,14 +250,11 @@ class Pixtral(lmms):
             
             # Set default generation parameters if not provided
             if "max_new_tokens" not in gen_kwargs:
-                gen_kwargs["max_new_tokens"] = 1024
+                gen_kwargs["max_new_tokens"] = 8192
             if "temperature" not in gen_kwargs:
                 gen_kwargs["temperature"] = 0
-            if "top_p" not in gen_kwargs:
-                gen_kwargs["top_p"] = None
-            if "num_beams" not in gen_kwargs:
-                gen_kwargs["num_beams"] = 1
 
+            self._sampling_params = SamplingParams(max_tokens=gen_kwargs["max_new_tokens"], temperature=gen_kwargs["temperature"])
             # TODO: for now, images and text are passed seperatly to the processor
             assert self.batch_size_per_gpu == 1, "Do not support batch_size_per_gpu > 1 for now"
             context = contexts[0]
