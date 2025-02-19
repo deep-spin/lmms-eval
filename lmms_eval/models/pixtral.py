@@ -50,6 +50,7 @@ class Pixtral(lmms):
         tag: Optional[str] = None,
         device_map: str = "",
         use_cache: bool = True,
+        max_img_per_msg: int = 10,
         **kwargs,
     ) -> None:
         super().__init__()
@@ -69,7 +70,7 @@ class Pixtral(lmms):
         if isinstance(dtype, str) and dtype != "auto":
             dtype = getattr(torch, dtype)
 
-        self._model = LLM(model=pretrained, tokenizer_mode="mistral", gpu_memory_utilization=0.7, max_model_len=16384)
+        self._model = LLM(model=pretrained, tokenizer_mode="mistral", limit_mm_per_prompt={"image": max_img_per_msg}, gpu_memory_utilization=0.7, max_model_len=16384)
         
         self.batch_size_per_gpu = int(batch_size)
         self.use_cache = use_cache
@@ -240,7 +241,6 @@ class Pixtral(lmms):
         num_iters = len(requests) // self.batch_size if len(requests) % self.batch_size == 0 else len(requests) // self.batch_size + 1
         
         pbar = tqdm(total=num_iters, disable=(self.rank != 0), desc="Model Responding")
-        
         for chunk in chunks:
             contexts, all_gen_kwargs, doc_to_visuals, doc_id, tasks, splits = zip(*chunk)
             visuals = [doc_to_visual(self.task_dict[task][split][ids]) for ids, task, split, doc_to_visual in zip(doc_id, tasks, splits, doc_to_visuals)]
@@ -259,14 +259,15 @@ class Pixtral(lmms):
             assert self.batch_size_per_gpu == 1, "Do not support batch_size_per_gpu > 1 for now"
             context = contexts[0]
             visual = visuals[0]
+            
             # TODO: handle multiple images / understand the `visuals` object
-            if isinstance(visual, list):
-                if len(visual) > 1:
-                    eval_logger.warning("More than one image is not supported for now... Using the first one")
-                visual = visual[0]
+            if not isinstance(visual, list):
+                visual = [visual]
 
             # vLLM does not work with bytes, so we need to convert it to a data url
-            image_url = self.get_image_url(visual)
+            image_urls = [self.get_image_url(v) for v in visual]
+            
+            # image_url = self.get_image_url(visual)
 
             # Pixtral expects inputs in a different format, and doesn't work with <image> tokens added in the middle of the prompt.
             context = context.replace(DEFAULT_IMAGE_TOKEN, "")
@@ -277,11 +278,10 @@ class Pixtral(lmms):
             # create chat object
             message = [
                 {"role": "user",
-                 "content": [{"type": "text", "text": context}, {"type": "image_url", "image_url": {"url": image_url}}]
+                 "content": [{"type": "text", "text": context}] + [{"type": "image_url", "image_url": {"url": image_url}} for image_url in image_urls]
                      }]
             if self.add_system_prompt is not None:
                 message.insert(0, {"role": "system", "content": self.add_system_prompt})
-
             
             try:
                 output = self._model.chat(message, sampling_params=self._sampling_params)
