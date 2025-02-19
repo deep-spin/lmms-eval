@@ -5,40 +5,17 @@ import torch
 from accelerate import Accelerator, DistributedType
 from accelerate.state import AcceleratorState
 from tqdm import tqdm
-from transformers import AutoProcessor, AutoModel
-from lmms_eval import utils
 from lmms_eval.api.instance import Instance
 from lmms_eval.api.model import lmms
 from lmms_eval.api.registry import register_model
-from mistral_inference.transformer import Transformer
-from mistral_inference.generate import generate
 from huggingface_hub import snapshot_download
-from mistral_common.tokens.tokenizers.mistral import MistralTokenizer
-from mistral_common.protocol.instruct.messages import UserMessage, TextChunk, ImageURLChunk
-from mistral_common.protocol.instruct.request import ChatCompletionRequest
 
-from transformers import LlavaForConditionalGeneration, AutoProcessor
-from PIL import Image
-from vllm import LLM
 from vllm.sampling_params import SamplingParams
 
-
-import PIL.Image
-import uuid
-from vllm import EngineArgs, LLMEngine
-from vllm import SamplingParams, TokensPrompt
-from vllm.multimodal import MultiModalDataBuiltins
-
-from mistral_common.protocol.instruct.messages import (
-    UserMessage,
-    TextChunk,
-    ImageURLChunk,
-    ImageChunk,
-)
-from PIL import Image
-from mistral_common.protocol.instruct.request import ChatCompletionRequest
-from mistral_common.tokens.tokenizers.mistral import MistralTokenizer
-
+import io
+import base64
+from vllm import LLM
+from vllm.sampling_params import SamplingParams
 
 
 
@@ -56,7 +33,7 @@ class Pixtral(lmms):
 
     accelerate launch --num_processes=8 -m lmms_eval \
         --model pixtral \
-        --model_args pretrained=mistralai/Pixtral-12B-Base-2409 \
+        --model_args pretrained=mistralai/mistralai/Pixtral-12B-2409 \
         --tasks mme \
         --batch_size 1 \
         --output_path ./logs/ \
@@ -65,8 +42,7 @@ class Pixtral(lmms):
 
     def __init__(
         self,
-        pretrained: str = "mistralai/Pixtral-12B-Base-2409",
-        model_path: str = None,
+        pretrained: str = "mistralai/Pixtral-12B-2409",
         device: str = "cuda",
         dtype: Optional[Union[str, torch.dtype]] = "bfloat16",
         batch_size: int = 1,
@@ -93,17 +69,8 @@ class Pixtral(lmms):
         if isinstance(dtype, str) and dtype != "auto":
             dtype = getattr(torch, dtype)
 
-        self.engine_args = EngineArgs(
-            model=pretrained,
-            tokenizer_mode="mistral",
-            enable_chunked_prefill=False,
-            limit_mm_per_prompt=dict(image=4),
-            max_num_batched_tokens=16384,
-            max_model_len=16384,
-        )
-        self.sampling_params = SamplingParams(temperature=0.0, max_tokens=512)
-        self._engine = LLMEngine.from_engine_args(self.engine_args)
-        self._tokenizer = self._engine.tokenizer.tokenizer.mistral
+        self._sampling_params = SamplingParams(max_tokens=8192)
+        self._model = LLM(model=pretrained, tokenizer_mode="mistral")
         
         self.batch_size_per_gpu = int(batch_size)
         self.use_cache = use_cache
@@ -254,28 +221,13 @@ class Pixtral(lmms):
         return new_list
 
 
-    def create_image_input(self, images, prompt):
-        # tokenize images and text
-        tokenized = self._tokenizer.encode_chat_completion(
-            ChatCompletionRequest(
-                messages=[
-                    UserMessage(
-                        content=[
-                            TextChunk(text=prompt),
-                        ] + [ImageChunk(image=img) for img in images]
-                    )
-                ],
-                model="pixtral",
-            )
-        )
-
-        engine_inputs = TokensPrompt(prompt_token_ids=tokenized.tokens)
-
-        mm_data = MultiModalDataBuiltins(image=images)
-        engine_inputs["multi_modal_data"] = mm_data
-
-        return engine_inputs
-
+    def get_image_url(self, image_bytes: bytes) -> str:
+        buffer = io.BytesIO()
+        image_bytes.save(buffer, format="JPEG")
+        img_bytes = buffer.getvalue()
+        base64_image = base64.b64encode(img_bytes).decode('utf-8')
+        data_url = f"data:image/jpeg;base64,{base64_image}"
+        return data_url
 
     def generate_until(self, requests: List[Instance]) -> List[str]:
         """Generate text based on the given requests."""
@@ -308,7 +260,6 @@ class Pixtral(lmms):
             if "num_beams" not in gen_kwargs:
                 gen_kwargs["num_beams"] = 1
 
-
             # TODO: for now, images and text are passed seperatly to the processor
             assert self.batch_size_per_gpu == 1, "Do not support batch_size_per_gpu > 1 for now"
             context = contexts[0]
@@ -318,26 +269,38 @@ class Pixtral(lmms):
                 if len(visual) > 1:
                     eval_logger.warning("More than one image is not supported for now... Using the first one")
                 visual = visual[0]
-            
-            if DEFAULT_IMAGE_TOKEN not in context:
-                context = f"{DEFAULT_IMAGE_TOKEN}\n{context}"
+
+            # vLLM does not work with bytes, so we need to convert it to a data url
+            image_url = self.get_image_url(visual)
+
+            # Pixtral expects inputs in a different format, and doesn't work with <image> tokens added in the middle of the prompt.
+            context = context.replace(DEFAULT_IMAGE_TOKEN, "")
+
             if self.tag:
                 context = f"{self.tag} " + context
-            # create chat object and apply template
-            chat = [{"role": "user", "content": context}]
+
+            # create chat object
+            message = [
+                {"role": "user",
+                 "content": [{"type": "text", "text": context}, {"type": "image_url", "image_url": {"url": image_url}}]
+                     }]
             if self.add_system_prompt is not None:
-                chat.insert(0, {"role": "system", "content": self.add_system_prompt})
+                message.insert(0, {"role": "system", "content": self.add_system_prompt})
+
             
             try:
-                self._engine.add_request(uuid.uuid4().hex, self.create_image_input([visual], context), self.sampling_params)
-                out = self._engine.step()
-                result = out[0].outputs[0].text
+                output = self._model.chat(message, sampling_params=self._sampling_params)
+                result = output[0].outputs[0].text
             except Exception as e:
                 eval_logger.error(f"Error {e} in generating")
                 result = ""
             res.append(result)
             pbar.update(1)
         pbar.close()
+        for rid, res in enumerate(res):
+            print(rid, res)
+            if rid >100:
+                break
         return res
 
     def generate_until_multi_round(self, requests) -> List[str]:
