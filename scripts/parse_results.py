@@ -1,148 +1,255 @@
 import argparse
 import json
+import glob
+import os
+from tabulate import tabulate
+
+def get_results_m3exam(results, task_name, model_name):
+    rows = []
+    scores = {}
+    scores["en"] = float(results["m3exam_english"]["m3exam,none"]) * 100
+    scores["it"] = float(results["m3exam_italian"]["m3exam,none"]) * 100
+    scores["pt"] = float(results["m3exam_portuguese"]["m3exam,none"]) * 100
+    scores["zh"] = float(results["m3exam_chinese"]["m3exam,none"]) * 100
+    
+    for kk, vv in scores.items():
+        rows.append({
+            "model": model_name,
+            "task": task_name,
+            "language": kk,
+            "score": vv
+        })
+    return rows
+
+def get_results_chartqa(results, task_name, model_name):
+    rows = []
+    scores = {}
+    scores["en"] = float(results["chartqa"]["relaxed_overall,none"]) * 100
+    
+    for kk, vv in scores.items():
+        rows.append({
+            "model": model_name,
+            "task": task_name,
+            "language": kk,
+            "score": vv
+        })
+    return rows
+
+"""
+We use Exact Match Accuracy for this task.
+This is based on the information provided in the origial paper: 
+MaXM: Towards Multilingual Visual Question Answering (https://arxiv.org/pdf/2209.05401)
+Section 5.1:
+Evaluation Metrics. We use Exact Match Accu-
+racy as the main evaluation measure for MaXM,
+following previous work on VQA
+"""
+def get_results_maxm(results, task_name, model_name):
+    rows = []
+    scores = {}
+    scores["en"] = float(results["maxm_en"]["relaxed_accuracy,none"])
+    scores["fr"] = float(results["maxm_fr"]["relaxed_accuracy,none"])
+    scores["zh"] = float(results["maxm_zh"]["relaxed_accuracy,none"])
+    
+    for kk, vv in scores.items():
+        rows.append({
+            "model": model_name,
+            "task": task_name,
+            "language": kk,
+            "score": vv
+        })
+    return rows
+
+def get_results_mme(results, task_name, model_name):
+    rows = []
+    scores = {}
+    scores["en"] = f"{round(results['mme']['mme_cognition_score,none'],2)}/{round(results['mme']['mme_perception_score,none'],2)}"
+    
+    for kk, vv in scores.items():
+        rows.append({
+            "model": model_name,
+            "task": task_name,
+            "language": kk,
+            "score": vv
+        })
+    return rows
+
+def get_results_mmmu(results, task_name, model_name):
+    rows = []
+    scores = {}
+    scores["en"] = float(results["mmmu_val"]["mmmu_acc,none"]) * 100
+    
+    for kk, vv in scores.items():
+        rows.append({
+            "model": model_name,
+            "task": task_name,
+            "language": kk,
+            "score": vv
+        })
+    return rows
+
+def get_results_ocrbench(results, task_name, model_name):
+    rows = []
+    scores = {}
+    scores["en"] = float(results["ocrbench"]["ocrbench_accuracy,none"]) * 100
+    
+    for kk, vv in scores.items():
+        rows.append({
+            "model": model_name,
+            "task": task_name,
+            "language": kk,
+            "score": vv
+        })
+    return rows
+
+def get_results_scienceqa(results, task_name, model_name):
+    rows = []
+    scores = {}
+    scores["en"] = float(results["scienceqa"]["exact_match,none"]) * 100
+    
+    for kk, vv in scores.items():
+        rows.append({
+            "model": model_name,
+            "task": task_name,
+            "language": kk,
+            "score": vv
+        })
+    return rows
+
+def get_results_textvqa(results, task_name, model_name):
+    rows = []
+    scores = {}
+    scores["en"] = float(results["textvqa_val"]["exact_match,none"]) * 100
+    
+    for kk, vv in scores.items():
+        rows.append({
+            "model": model_name,
+            "task": task_name,
+            "language": kk,
+            "score": vv
+        })
+    return rows
+
+def get_results_xgqa(results, task_name, model_name):
+    rows = []
+    scores = {}
+    scores["de"] = float(results["xgqa_de"]["exact_match,none"]) * 100
+    scores["en"] = float(results["xgqa_en"]["exact_match,none"]) * 100
+    scores["ko"] = float(results["xgqa_ko"]["exact_match,none"]) * 100
+    scores["pt"] = float(results["xgqa_pt"]["exact_match,none"]) * 100
+    scores["ru"] = float(results["xgqa_ru"]["exact_match,none"]) * 100
+    scores["zh"] = float(results["xgqa_zh"]["exact_match,none"]) * 100
+    
+    for kk, vv in scores.items():
+        rows.append({
+            "model": model_name,
+            "task": task_name,
+            "language": kk,
+            "score": vv
+        })
+    return rows
+
+# def get_results_xm100(results, task_name, model_name):
+#     rows = []
+#     scores = {}
+#     scores["de"] = float(results["xm100_de"]["xm100_CIDEr,none"]) * 100
+#     scores["en"] = float(results["xm100_en"]["xm100_CIDEr,none"]) * 100
+#     scores["es"] = float(results["xm100_es"]["xm100_CIDEr,none"]) * 100
+#     scores["fr"] = float(results["xm100_fr"]["xm100_CIDEr,none"]) * 100
+#     scores["it"] = float(results["xm100_it"]["xm100_CIDEr,none"]) * 100
+#     scores["ko"] = float(results["xm100_ko"]["xm100_CIDEr,none"]) * 100
+#     scores["nl"] = float(results["xm100_nl"]["xm100_CIDEr,none"]) * 100
+#     scores["pt"] = float(results["xm100_pt"]["xm100_CIDEr,none"]) * 100
+#     scores["ru"] = float(results["xm100_ru"]["xm100_CIDEr,none"]) * 100
+#     scores["zh"] = float(results["xm100_zh"]["xm100_CIDEr,none"]) * 100
+    
+#     for kk, vv in scores.items():
+#         rows.append({
+#             "model": model_name,
+#             "task": task_name,
+#             "language": kk,
+#             "score": vv
+#         })
+#     return rows
+
+def get_results_xmmmu(results, task_name, model_name):
+    rows = []
+    scores = {}
+    scores["en"] = float(results["mmmu_English_val"]["mmmu_acc,none"]) * 100
+    scores["fr"] = float(results["mmmu_French_val"]["mmmu_acc,none"]) * 100
+    scores["pt"] = float(results["mmmu_Portuguese_val"]["mmmu_acc,none"]) * 100
+    
+    for kk, vv in scores.items():
+        rows.append({
+            "model": model_name,
+            "task": task_name,
+            "language": kk,
+            "score": vv
+        })
+    return rows
 
 
-def get_results_m3exam(results):
-    score_en = results["m3exam_english"]["m3exam,none"]
-    results_multi = 0
-    results_multi = [
-        result["m3exam,none"]
-        for task, result in results.items()
-        if (task != "m3exam_english" and task != "m3exam")
-    ]
-    score_multi = sum(results_multi) / len(results_multi)
-    return score_en * 100, score_multi * 100
+def get_results_ai2d(results, task_name, model_name):
+    rows = []
+    scores = {}
+    scores["en"] = float(results["ai2d"]["exact_match,flexible-extract"]) * 100
+    
+    for kk, vv in scores.items():
+        rows.append({
+            "model": model_name,
+            "task": task_name,
+            "language": kk,
+            "score": vv
+        })
+    return rows
 
-
-def get_results_marvl(results):
-    score_en = results["nlvr2"]["exact_match,none"]
-    results_multi = 0
-    results_multi = [
-        result["exact_match,none"]
-        for task, result in results.items()
-        if (task != "marvl" and task != "nlvr2")
-    ]
-    score_multi = sum(results_multi) / len(results_multi)
-    return score_en * 100, score_multi * 100
-
-
-def get_results_maxm(results):
-    score_en = results["maxm_en"]["relaxed_accuracy,none"]
-    results_multi = 0
-    results_multi = [
-        result["relaxed_accuracy,none"]
-        for task, result in results.items()
-        if (task != "maxm" and task != "maxm_en")
-    ]
-    score_multi = sum(results_multi) / len(results_multi)
-    return score_en, score_multi
-
-
-def get_results_xgqa(results):
-    score_en = results["xgqa_en"]["exact_match,none"]
-    results_multi = 0
-    results_multi = [
-        result["exact_match,none"]
-        for task, result in results.items()
-        if (task != "xgqa" and task != "xgqa_en")
-    ]
-    score_multi = sum(results_multi) / len(results_multi)
-    return score_en * 100, score_multi * 100
-
-
-def get_results_xm100(results):
-    score_en = results["xm100_en"]["xm100_ROUGE_L,none"]
-    results_multi = 0
-    results_multi = [
-        result["xm100_ROUGE_L,none"]
-        for task, result in results.items()
-        if (task != "xm100" and task != "xm100_en")
-    ]
-    score_multi = sum(results_multi) / len(results_multi)
-    return score_en * 100, score_multi * 100
-
-
-def get_results_xmmmu(results):
-    score_en = results["mmmu_English_val"]["mmmu_acc,none"]
-    results_multi = 0
-    results_multi = [
-        result["mmmu_acc,none"]
-        for task, result in results.items()
-        if (task != "xmmmu" and task != "mmmu_English_val")
-    ]
-    score_multi = sum(results_multi) / len(results_multi)
-    return score_en * 100, score_multi * 100
-
-
-def get_results_multilingual_llava_bench(results):
-    score_en = results["multilingual_llava_bench_english"]["gpt_eval_llava_all,none"]
-    results_multi = 0
-    results_multi = [
-        result["gpt_eval_llava_all,none"]
-        for task, result in results.items()
-        if (
-            task != "multilingual_llava_bench"
-            and task != "multilingual_llava_bench_english"
-        )
-    ]
-    score_multi = sum(results_multi) / len(results_multi)
-    return score_en, score_multi
-
-
-def get_results_ai2d(results):
-    score_en = results["ai2d"]["exact_match,flexible-extract"]
-    return score_en * 100, None
-
-
-def get_results_mmmu(results):
-    score_en = results["mmmu_val_group_img"]["mmmu_acc,none"]
-    return score_en * 100, None
-
-
-def get_results_textvqa(results):
-    score_en = results["textvqa_val"]["exact_match,none"]
-    return score_en * 100, None
-
-def get_results_scienceqa(results):
-    score_en = results["scienceqa"]["exact_match,none"]
-    return score_en * 100, None
-
-def process_results(data, task):
+def process_results(data, task_name, model_name):
     results = data["results"]
-    score_en, score_multi = result_functions[task](results)
-    print(f"============== Results for {task} ==============")
-    if score_multi:
-        print(f"{score_en:.2f}\t{score_multi:.2f}")
-    else:
-        print(f"{score_en:.2f}")
+    results = result_functions[task_name](results, task_name, model_name)
+    return results
 
 
 result_functions = {
-    "ai2d": get_results_ai2d,
-    "mmmu": get_results_mmmu,
-    "textvqa": get_results_textvqa,
     "m3exam": get_results_m3exam,
-    "marvl": get_results_marvl,
+    "chartqa": get_results_chartqa,
     "maxm": get_results_maxm,
-    "xgqa": get_results_xgqa,
-    "xm100": get_results_xm100,
-    "xmmmu": get_results_xmmmu,
-    "mllava_bench": get_results_multilingual_llava_bench,
+    "mme": get_results_mme,
+    "mmmu": get_results_mmmu,
+    "ocrbench": get_results_ocrbench,
     "scienceqa": get_results_scienceqa,
+    "textvqa": get_results_textvqa,
+    "xgqa": get_results_xgqa,
+    # "xm100": get_results_xm100,
+    "xmmmu": get_results_xmmmu,
+    "ai2d": get_results_ai2d,
 }
 
 
 def main():
     parser = argparse.ArgumentParser(description="Process a JSON file.")
-    parser.add_argument("--input_file", type=str, help="Path to the input JSON file")
+    parser.add_argument("--input-dir", type=str, help="Path to the input JSON file")
     parser.add_argument("--task", type=str, help="The name of the task", required=True)
+    parser.add_argument("--model", type=str, help="The name of the model", required=True)
     args = parser.parse_args()
+    
+    model_name = args.model.replace("/", "__")
+    task = args.task
+    
+    
 
-    with open(args.input_file, "r") as file:
+    input_dir = os.path.join(args.input_dir, task, model_name)
+    input_files = glob.glob(os.path.join(input_dir, "*results.json"))
+    if not input_files:
+        print(f"No files found in directory {args.input_dir} with pattern *results.json")
+    assert len(input_files) == 1, f"Found more than one file in {args.input_dir} with pattern *results.json"
+    input_file = input_files[0]
+
+    
+    
+    with open(input_file, "r") as file:
         data = json.load(file)
-
-    processed_data = process_results(data, task=args.task)
-
+    processed_data = process_results(data, task_name=args.task, model_name=model_name)
+    print(tabulate(processed_data, headers="keys"))
 
 if __name__ == "__main__":
     main()
