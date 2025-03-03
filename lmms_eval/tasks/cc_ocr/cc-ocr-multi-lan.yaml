@@ -1,0 +1,8 @@
+group: cc-ocr-multi-lan
+task:
+  - cc-ocr-multi-lan-de
+  - cc-ocr-multi-lan-fr
+  # - cc-ocr-multi-lan-it
+  # - cc-ocr-multi-lan-ru
+  # - cc-ocr-multi-lan-es
+  - cc-ocr-multi-lan-ko
