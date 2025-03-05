@@ -51,6 +51,8 @@ class Pixtral(lmms):
         device_map: str = "",
         use_cache: bool = True,
         max_img_per_msg: int = 10,
+        tokenizer_mode: str = "mistral",
+        gpu_memory_utilization: float = 0.7,
         **kwargs,
     ) -> None:
         super().__init__()
@@ -70,7 +72,9 @@ class Pixtral(lmms):
         if isinstance(dtype, str) and dtype != "auto":
             dtype = getattr(torch, dtype)
 
-        self._model = LLM(model=pretrained, tokenizer_mode="mistral", limit_mm_per_prompt={"image": max_img_per_msg}, gpu_memory_utilization=0.7, max_model_len=16384)
+        self._tokenizer_mode = tokenizer_mode
+        self._gpu_memory_utilization = gpu_memory_utilization
+        self._model = LLM(model=pretrained, tokenizer_mode=self._tokenizer_mode, limit_mm_per_prompt={"image": max_img_per_msg}, gpu_memory_utilization=self._gpu_memory_utilization, max_model_len=16384)
         
         self.batch_size_per_gpu = int(batch_size)
         self.use_cache = use_cache
@@ -103,7 +107,7 @@ class Pixtral(lmms):
                 eval_logger.info("Using pipeline parallelism")
             else:
                 eval_logger.info(f"Using single device: {self._device}")
-                self.model.to(self._device)
+                # self.model.to(self._device)
             self._rank = 0
             self._world_size = 1
 
