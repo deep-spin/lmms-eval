@@ -1,0 +1,6 @@
+group: m3exam_tower
+task:
+- m3exam_chinese
+- m3exam_english
+- m3exam_italian
+- m3exam_portuguese
