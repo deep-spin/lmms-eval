@@ -195,7 +195,7 @@ class NVLM_D(lmms):
         for chunk in chunks:
             contexts, all_gen_kwargs, doc_to_visuals, doc_id, tasks, splits = zip(*chunk)
             visuals = [doc_to_visual(self.task_dict[task][split][ids]) for ids, task, split, doc_to_visual in zip(doc_id, tasks, splits, doc_to_visuals)]
-            
+
             # Use the generation kwargs from the first request in the batch
             gen_kwargs = all_gen_kwargs[0]
             
@@ -232,13 +232,17 @@ class NVLM_D(lmms):
             assert self.batch_size_per_gpu == 1, "Do not support batch_size_per_gpu > 1 for now"
             context = contexts[0]
             visual = visuals[0]
-            # TODO: handle multiple images / understand the `visuals` object
             if isinstance(visual, list):
-                if len(visual) > 1:
-                    eval_logger.warning("More than one image is not supported for now... Using the first one")
-                visual = visual[0]
-            
-            if DEFAULT_IMAGE_TOKEN not in context:
+                if len(visual) == 0:
+                    eval_logger.warning("Found Sample with no image...")
+                    visual = None
+                elif len(visual) > 1:
+                    eval_logger.warning("More than one image is not supported for now... Using the first one for now.")
+                    visual = visual[0]
+                else:
+                    visual = visual[0]
+                
+            if DEFAULT_IMAGE_TOKEN not in context and visual is not None:
                 context = f"{DEFAULT_IMAGE_TOKEN}\n{context}"
             
             if self.tag:
@@ -249,7 +253,11 @@ class NVLM_D(lmms):
                 chat.insert(0, {"role": "system", "content": self.add_system_prompt})
             prompt = self._tokenizer.apply_chat_template(chat, tokenize=False, add_generation_prompt=True)
             # Process inputs through the processor
-            inputs = self._processor(images=[visual], text=[prompt], return_tensors="pt")
+            if visual is None:
+                # TODO: handle this case where we have no image!
+                inputs = self._processor(images=[], text=[prompt], return_tensors="pt")
+            else:
+                inputs = self._processor(images=[visual], text=[prompt], return_tensors="pt")
             inputs = {k: v.to(self.device) for k, v in inputs.items()}
 
             # Generate outputs
