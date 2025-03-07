@@ -1,0 +1,35 @@
+dataset_path:  Unbabel/commute_multimodal_mt
+task: commute-zh
+
+test_split: zh
+
+
+dataset_kwargs:
+  token: True
+
+
+process_docs:  !function utils.commute_process_docs
+doc_to_visual: !function utils.commute_doc_to_visual
+doc_to_text: !function utils.commute_doc_to_text
+process_results: !function utils.commute_process_results
+
+doc_to_target: "answer"
+
+output_type: generate_until
+generation_kwargs:
+  max_new_tokens: 128
+  temperature: 0
+  do_sample: False
+
+
+lmms_eval_specific_kwargs:
+  default:
+    pre_prompt: "Translate the following text from English to Chinese by taking into account the image to resolve any ambiguities.\nEnglish: {source}\nChinese: "
+
+metric_list:
+  - metric: results
+    aggregation: !function utils.commute_aggregate_results
+    higher_is_better: true
+
+metadata:
+  - version: 0.0

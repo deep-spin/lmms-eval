@@ -1,0 +1,8 @@
+group: commute-all
+task:
+  - commute-de
+  - commute-ar
+  - commute-cs
+  - commute-fr
+  - commute-ru
+  - commute-zh
