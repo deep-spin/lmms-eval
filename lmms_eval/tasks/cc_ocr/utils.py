@@ -28,7 +28,7 @@ def ccocr_process_docs(docs):
     """
     logger.info(f"Converting base64 images to PIL Images...")
     # Process images in place
-    # docs = docs.select(range(10)) filter out some samples!
+    # docs = docs.select(range(20)) # filter out some samples!
     docs = docs.map(
         lambda doc: {
             'image': base64_to_bytes(doc['image'])

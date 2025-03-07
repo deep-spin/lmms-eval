@@ -32,7 +32,7 @@ generation_kwargs:
 
 lmms_eval_specific_kwargs:
   default:
-    post_prompt: "\nAnswer by providing the text directly."
+    post_prompt: "\nAnswer by providing the text in the image directly."
 
 metric_list:
   - metric: ocr_results
