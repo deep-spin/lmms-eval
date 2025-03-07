@@ -76,7 +76,7 @@ def ccocr_multi_lan_ocr_aggregate_results(results):
 
     non_basic_languages = ["Arabic", "Japanese", "Korean", "Chinese"]
     pdt_tokenized, gt_tokenized = [], []
-    
+
     for res  in results:
         index = res["index"]
         image_name = res["image_name"]
@@ -87,6 +87,11 @@ def ccocr_multi_lan_ocr_aggregate_results(results):
         language = image_name.split("_")[0]
         if language in non_basic_languages:
             is_word_level = False
+
+        if gt is None:
+            logger.warning(f"gt is None for index {index} and image_name {image_name}")
+            continue
+            
         pdt_token_list = text_normalize_and_tokenize(pred.strip(), is_word_level, is_lower, is_alphanum_only)
         gt_token_list = text_normalize_and_tokenize(gt.strip(), is_word_level, is_lower, is_alphanum_only)
         pdt_tokenized.append(pdt_token_list)
