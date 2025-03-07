@@ -64,7 +64,7 @@ def calculate_metrics(predictions, groundtruths, is_verbose=False):
     hmean = 2 * recall_acc * preci_acc / (recall_acc + preci_acc + 1e-9)
     vbs_eval_result = {
         'macro_recall': final_macro_recall, 'macro_precision': final_macro_precision, 'macro_f1_score': final_macro_f1,
-        'micro_recall': recall_acc, 'micro_precision': preci_acc, 'mirco_f1_score': hmean
+        'micro_recall': recall_acc, 'micro_precision': preci_acc, 'micro_f1_score': hmean
     }
-    eval_result = vbs_eval_result if is_verbose else {'macro_f1_score': final_macro_f1, 'mirco_f1_score': hmean}
+    eval_result = vbs_eval_result if is_verbose else {'macro_f1_score': final_macro_f1, 'micro_f1_score': hmean}
     return eval_result

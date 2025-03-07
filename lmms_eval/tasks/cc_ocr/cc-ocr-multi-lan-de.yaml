@@ -25,10 +25,14 @@ doc_to_target: "answer"
 
 output_type: generate_until
 generation_kwargs:
-  max_new_tokens: 40
+  max_new_tokens: 128
   temperature: 0
   do_sample: False
 
+
+lmms_eval_specific_kwargs:
+  default:
+    post_prompt: "\nAnswer by providing the text directly."
 
 metric_list:
   - metric: ocr_results

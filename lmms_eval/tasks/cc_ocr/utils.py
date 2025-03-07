@@ -28,6 +28,7 @@ def ccocr_process_docs(docs):
     """
     logger.info(f"Converting base64 images to PIL Images...")
     # Process images in place
+    # docs = docs.select(range(10)) filter out some samples!
     docs = docs.map(
         lambda doc: {
             'image': base64_to_bytes(doc['image'])
@@ -41,9 +42,17 @@ def ccocr_doc_to_visual(doc):
     return [image]
 
 
-def ccocr_doc_to_text(doc, ):
+def ccocr_doc_to_text(doc,lmms_eval_specific_kwargs=None ):
     question = doc["question"]
-    return f"{question}"
+    if 'pre_prompt' in lmms_eval_specific_kwargs:
+        pre_prompt = lmms_eval_specific_kwargs["pre_prompt"]
+    else:
+        pre_prompt = ""
+    if 'post_prompt' in lmms_eval_specific_kwargs:
+        post_prompt = lmms_eval_specific_kwargs["post_prompt"]
+    else:
+        post_prompt = ""
+    return f"{pre_prompt}{question}{post_prompt}"
 
 
 def ccocr_process_results(doc, results):
@@ -67,6 +76,7 @@ def ccocr_multi_lan_ocr_aggregate_results(results):
 
     non_basic_languages = ["Arabic", "Japanese", "Korean", "Chinese"]
     pdt_tokenized, gt_tokenized = [], []
+    
     for res  in results:
         index = res["index"]
         image_name = res["image_name"]
@@ -77,12 +87,10 @@ def ccocr_multi_lan_ocr_aggregate_results(results):
         language = image_name.split("_")[0]
         if language in non_basic_languages:
             is_word_level = False
-        
-        
         pdt_token_list = text_normalize_and_tokenize(pred.strip(), is_word_level, is_lower, is_alphanum_only)
         gt_token_list = text_normalize_and_tokenize(gt.strip(), is_word_level, is_lower, is_alphanum_only)
         pdt_tokenized.append(pdt_token_list)
         gt_tokenized.append(gt_token_list)
 
-    eval_result = calculate_metrics(pdt_tokenized, gt_tokenized, is_verbose=False)
+    eval_result = calculate_metrics(pdt_tokenized, gt_tokenized, is_verbose=True)
     return  eval_result
