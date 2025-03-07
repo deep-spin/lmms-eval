@@ -63,7 +63,9 @@ def get_results_maxm(results, task_name, model_name):
 def get_results_mme(results, task_name, model_name):
     rows = []
     scores = {}
-    scores["en"] = f"{round(results['mme']['mme_cognition_score,none'],2)}/{round(results['mme']['mme_perception_score,none'],2)}"
+    mme_cognition_score = float(results['mme']['mme_cognition_score,none'])
+    mme_perception_score = float(results['mme']['mme_perception_score,none'])
+    scores["en"] = f"{round(mme_cognition_score,2)}/{round(mme_perception_score,2)}"
     
     for kk, vv in scores.items():
         rows.append({
@@ -248,8 +250,12 @@ def main():
     
     with open(input_file, "r") as file:
         data = json.load(file)
+        
     processed_data = process_results(data, task_name=args.task, model_name=model_name)
-    print(tabulate(processed_data, headers="keys"))
+    # print(tabulate(processed_data, headers="keys", tablefmt=","))
+    # print(processed_data)
+    for row in processed_data:
+        print(f"{row['model']},{row['task']},{row['language']},{row['score']}")
 
 if __name__ == "__main__":
     main()
