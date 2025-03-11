@@ -12,7 +12,8 @@ ENGLISH_TASKS = {
     "maxm":"maxm_en",
     "xm100":"xm100_en",
     "xmmmu":"mmmu_English_val",
-    "xgqa":"xgqa_en"
+    "xgqa":"xgqa_en",
+    'cc-ocr-multi-lan':None,
 }
 
 
@@ -39,22 +40,40 @@ def aggregate_results(data):
         main_task_dict_multi = {}
         main_task_dict_eng = {}
         for subtask in subtasks_dict[maintask_name]:
-            draft_dict = data["results"][subtask]
-            metric_names = [re.match(pattern, field).group() for field in draft_dict if re.match(pattern, field)]
-            if subtask==ENGLISH_TASKS[maintask_name]:
-                for metric in metric_names:
-                    value = draft_dict[f"{metric},none"]
-                    if metric not in main_task_dict_eng:
-                        main_task_dict_eng[metric] = [value]
-                    else:
-                        main_task_dict_eng[metric].append(value)
+            if "cc-ocr-multi-lan" in subtask:
+                draft_dict = data["results"][subtask]["ocr_results,none"]
+                metric_names = list(draft_dict.keys())
+                if subtask==ENGLISH_TASKS[maintask_name]:
+                    for metric in metric_names:
+                        value = draft_dict[f"{metric}"]
+                        if metric not in main_task_dict_eng:
+                            main_task_dict_eng[metric] = [value]
+                        else:
+                            main_task_dict_eng[metric].append(value)
+                else:
+                    for metric in metric_names:
+                        value = draft_dict[f"{metric}"]
+                        if metric not in main_task_dict_multi:
+                            main_task_dict_multi[metric] = [value]
+                        else:
+                            main_task_dict_multi[metric].append(value)
             else:
-                for metric in metric_names:
-                    value = draft_dict[f"{metric},none"]
-                    if metric not in main_task_dict_multi:
-                        main_task_dict_multi[metric] = [value]
-                    else:
-                        main_task_dict_multi[metric].append(value)
+                draft_dict = data["results"][subtask]
+                metric_names = [re.match(pattern, field).group() for field in draft_dict if re.match(pattern, field)]
+                if subtask==ENGLISH_TASKS[maintask_name]:
+                    for metric in metric_names:
+                        value = draft_dict[f"{metric},none"]
+                        if metric not in main_task_dict_eng:
+                            main_task_dict_eng[metric] = [value]
+                        else:
+                            main_task_dict_eng[metric].append(value)
+                else:
+                    for metric in metric_names:
+                        value = draft_dict[f"{metric},none"]
+                        if metric not in main_task_dict_multi:
+                            main_task_dict_multi[metric] = [value]
+                        else:
+                            main_task_dict_multi[metric].append(value)
         
         subtask_collect_multi_results[maintask_name] = main_task_dict_multi
         subtask_collect_eng_results[maintask_name] = main_task_dict_eng
@@ -64,7 +83,7 @@ def aggregate_results(data):
     for task_name in subtask_collect_multi_results:
         aggregated_results_multi[task_name] = {metric:np.mean(subtask_collect_multi_results[task_name][metric]) for metric in subtask_collect_multi_results[task_name] if metric!="submission"}
         aggregated_results_eng[task_name] = {metric:np.mean(subtask_collect_eng_results[task_name][metric]) for metric in subtask_collect_eng_results[task_name] if metric!="submission"}
-        
+
     return aggregated_results_eng, aggregated_results_multi
 
 
