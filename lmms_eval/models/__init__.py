@@ -58,6 +58,7 @@ AVAILABLE_MODELS = {
     "aria": "Aria",
     "pangea": "Pangea",
     "pixtral": "Pixtral",
+    "aya": "Aya",
 }
 
 
