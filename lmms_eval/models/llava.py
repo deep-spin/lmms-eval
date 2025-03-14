@@ -60,7 +60,7 @@ class Llava(lmms):
         model_name=None,
         attn_implementation=best_fit_attn_implementation,
         device_map="cuda:0",
-        conv_template="vicuna_v1",
+        conv_template="qwen_2",
         use_cache=True,
         tie_weights: bool = True,
         truncate_context=False,  # whether to truncate the context in generation, set it False for LLaVA-1.6
@@ -70,7 +70,6 @@ class Llava(lmms):
         super().__init__()
         # Do not use kwargs for now
         assert kwargs == {}, f"Unexpected kwargs: {kwargs}"
-
         accelerator_kwargs = InitProcessGroupKwargs(timeout=timedelta(weeks=52))
         accelerator = Accelerator(kwargs_handlers=[accelerator_kwargs])
         self.accelerator = accelerator
@@ -213,7 +212,6 @@ class Llava(lmms):
         # TODO
         res = []
         pbar = tqdm(total=len(requests), disable=(self.rank != 0), desc="Model Responding")
-
         for contexts, doc_to_target, doc_to_visual, doc_id, task, split in [reg.args for reg in requests]:
             # encode, pad, and truncate contexts for this batch
             if type(doc_to_target) == str:
@@ -286,7 +284,6 @@ class Llava(lmms):
 
     def generate_until(self, requests: List[Instance]) -> List[str]:
         res = []
-
         def _collate(x):
             # the negative sign on len(toks) sorts descending - this has a few advantages:
             # - time estimates will always be over not underestimates, which is more useful for planning
@@ -361,6 +358,10 @@ class Llava(lmms):
                     conv = copy.deepcopy(conv_templates[self.conv_template])
                 else:
                     conv = conv_templates[self.conv_template].copy()
+                # if conv.system:
+                #     conv.system = self.add_system_prompt
+                # elif self.add_system_prompt:
+                #     conv.system = self.add_system_prompt
                 conv.append_message(conv.roles[0], question)
                 conv.append_message(conv.roles[1], None)
                 prompt_question = conv.get_prompt()
