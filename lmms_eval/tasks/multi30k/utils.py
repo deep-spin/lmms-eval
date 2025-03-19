@@ -17,8 +17,9 @@ def multi30k_doc_to_visual(doc):
 
 def multi30k_process_results(doc, results):
     pred_answer = results[0]
+    source = doc["en"]
     target = doc["fr"]
-    return {"results":{"prediction":pred_answer,"ground_truth": target}}
+    return {"results":{"prediction":pred_answer,"ground_truth": target, "source":source}}
 
 def multi30k_aggregate_results(results):
     comet = RefCOMET(model="Unbabel/XCOMET-XL")
