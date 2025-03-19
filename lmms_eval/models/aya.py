@@ -40,6 +40,7 @@ class Aya(lmms):
         device: str = "cuda",
         dtype: Optional[Union[str, torch.dtype]] = "bfloat16",
         batch_size: int = 1,
+        add_system_prompt: Optional[str] = None,
         device_map: str = "",
         use_cache: bool = True,
         **kwargs,
@@ -65,6 +66,7 @@ class Aya(lmms):
         self._model = AutoModelForImageTextToText.from_pretrained(pretrained, device_map="auto", torch_dtype=torch.float16)
         self.batch_size_per_gpu = int(batch_size)
         self.use_cache = use_cache
+        self.add_system_prompt = add_system_prompt
         # Handle distributed setup
         if accelerator.num_processes > 1:
             assert accelerator.distributed_type in [DistributedType.FSDP, DistributedType.MULTI_GPU, DistributedType.DEEPSPEED]
@@ -220,7 +222,11 @@ class Aya(lmms):
                  +
                  [{"type": "image", "url": image_url} for image_url in image_urls]
                      }]
-            
+
+            if self.add_system_prompt is not None:
+                message.insert(0, {"role": "system", 
+                                   "content": [{"type": "text", "text": self.add_system_prompt}]})
+                
             try:
                 inputs = self._processor.apply_chat_template(message, padding=True, add_generation_prompt=True, tokenize=True, return_dict=True, return_tensors="pt").to(self._model.device)
                 result = self._model.generate(**inputs,
