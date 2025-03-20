@@ -2,7 +2,8 @@ import numpy as np
 from loguru import logger as eval_logger
 from lmms_eval.tasks.multi30k.comet_utils.comet import RefCOMET
 
-
+# def multi30k_process_docs(docs):
+#     return docs
 
 def multi30k_doc_to_text(doc, lmms_eval_specific_kwargs):
     source_txt = doc["en"]
@@ -15,10 +16,22 @@ def multi30k_doc_to_visual(doc):
     return [doc["image"].convert("RGB")]
 
 
-def multi30k_process_results(doc, results):
+def multi30k_process_results_fr(doc, results):
     pred_answer = results[0]
     source = doc["en"]
     target = doc["fr"]
+    return {"results":{"prediction":pred_answer,"ground_truth": target, "source":source}}
+
+def multi30k_process_results_de(doc, results):
+    pred_answer = results[0]
+    source = doc["en"]
+    target = doc["de"]
+    return {"results":{"prediction":pred_answer,"ground_truth": target, "source":source}}
+
+def multi30k_process_results_cs(doc, results):
+    pred_answer = results[0]
+    source = doc["en"]
+    target = doc["cs"]
     return {"results":{"prediction":pred_answer,"ground_truth": target, "source":source}}
 
 def multi30k_aggregate_results(results):
@@ -29,7 +42,7 @@ def multi30k_aggregate_results(results):
     comet.make_samples(sources, hypotheses, references)
     segments_scores_correct = comet.evaluate(hypotheses, references, sources, gpus=1, batch_size=16).result["segments_scores"]
     results = {
-               "avg_correct_score": np.mean(segments_scores_correct),
+               f"avg_XCOMET-XL_score": np.mean(segments_scores_correct),
                }
     return results
 

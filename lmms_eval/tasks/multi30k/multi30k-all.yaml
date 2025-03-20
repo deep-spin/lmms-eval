@@ -1,0 +1,5 @@
+group: multi30k-all
+task:
+  - multi30k-de
+  - multi30k-cs
+  - multi30k-fr

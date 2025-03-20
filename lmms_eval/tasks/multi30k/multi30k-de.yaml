@@ -1,18 +1,18 @@
 dataset_path: romrawinjp/multi30k
-task: "multi30k"
+task: "multi30k-de"
 test_split: test
 output_type: generate_until
 doc_to_visual: !function utils.multi30k_doc_to_visual
 doc_to_text: !function utils.multi30k_doc_to_text
-doc_to_target: "fr"
+doc_to_target: "de"
 generation_kwargs:
-  max_new_tokens: 16
+  max_new_tokens: 128
   temperature: 0
   top_p: 1.0
   num_beams: 1
   do_sample: false
 
-process_results: !function utils.multi30k_process_results
+process_results: !function utils.multi30k_process_results_de
 
 metric_list:
   - metric: results
@@ -20,13 +20,14 @@ metric_list:
     higher_is_better: true
     ignore_case: true
     ignore_punctuation: true
+    eval_model: "Unbabel/XCOMET-XXL"
 
 metadata:
   - version: 0.0
 
 lmms_eval_specific_kwargs:
   default:
-    pre_prompt: "Translate the following caption from English to French by taking into account the image to resolve any ambiguities.\nEnglish: {source}\nFrench: "
+    pre_prompt: "Translate the following source text from English to German:\n{source}"
     post_prompt: ""
   qwen_vl:
     pre_prompt: ""
