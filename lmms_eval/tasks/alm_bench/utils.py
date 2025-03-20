@@ -1,6 +1,6 @@
 from PIL import Image
-
-
+import re
+import sys
 def exact_match(pred, target):
     if pred == target:
         return 1
@@ -11,6 +11,26 @@ def alm_bench_doc_to_visual(doc):
     image = (doc['file_name']).convert('RGB')
     return [image]
 
+def split_answer_options(text):
+    option_words = {
+        "english": "Options",
+        "dutch": "Opties",
+        "korean": "옵션",
+        "Chinese (Simplified)": "选项",
+        "Spanish": "Opciones",
+        "Italian": "opzioni",
+        "Russian": "Варианты",
+        "French": "choix",
+        "Portuguese": "Opções",
+        "German": "Optionen",
+    }
+    text = text.strip()
+    match = re.match(r"^(.*?)\s*\((?:Options|Opties|옵션|选项|Opciones|opzioni|Варианты|choix|Opções|Optionen):\s*(.*?)\)$", text, re.IGNORECASE)
+    if match:
+        true_answer = match.group(1).strip()
+        choices = re.sub("\s*,\s*", "\n", match.group(2))
+        return true_answer, choices
+    return None, None
 
 def alm_bench_doc_to_text(doc, lmms_eval_specific_kwargs):
     # Process MCQ question to extract answer, at the moment since we are not filtered the data set, I only process MCQ question types
@@ -20,13 +40,9 @@ def alm_bench_doc_to_text(doc, lmms_eval_specific_kwargs):
     post_prompt = lmms_eval_specific_kwargs["post_prompt"]
     pre_prompt = lmms_eval_specific_kwargs["pre_prompt"]
     if lmms_eval_specific_kwargs["prompt_format"] == "mcq" and doc["Question_Type"] == "Multiple Choice Questions":
-        choices = doc["Translated_Answer"].split("(Options: ")[1].rstrip(")").split(", ")
-        choices_str = "\n".join([f"{choice}" for choice in choices])
-        print(f"{pre_prompt}{question}\n{choices_str}{post_prompt}")
-        return f"{pre_prompt}{question}\n{choices_str}{post_prompt}"
-    # elif lmms_eval_specific_kwargs["prompt_format"] == "tf" and doc["Question_Type"] == "True False Question":
-    #     options = "\n".join(["true","false"])
-    #     return f"{pre_prompt}{question}{options}{post_prompt}"
+        _, choices = split_answer_options(doc["Translated_Answer"])
+        full_prompt = f"{pre_prompt} {question}\n{choices}{post_prompt}"
+        return full_prompt
     else:
         return "WRONG PROMPT. Write no answer. "
 
@@ -46,7 +62,8 @@ def alm_bench_process_results(doc, results):
 
 def alm_bench_doc_to_target(doc, model_specific_target_kwargs):
     if model_specific_target_kwargs == "mcq":
-        return doc["Translated_Answer"].split(" (Options: ")[0]
+        true_answer, _ = split_answer_options(doc["Translated_Answer"])
+        return true_answer
     # elif model_specific_target_kwargs == "tf":
     #     return doc["Translated_Answer"]
     else:
