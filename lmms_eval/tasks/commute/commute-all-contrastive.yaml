@@ -1,4 +1,4 @@
-group: commute-all
+group: commute-all-contrastive
 task:
   - commute-de
   - commute-ar

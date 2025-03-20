@@ -15,16 +15,16 @@ process_results: !function utils.commute_process_results
 
 doc_to_target: "answer"
 
-output_type: generate_until
-generation_kwargs:
-  max_new_tokens: 128
-  temperature: 0
-  do_sample: False
+output_type: loglikelihood
+# generation_kwargs:
+#   max_new_tokens: 128
+#   temperature: 0
+#   do_sample: False
 
 
 lmms_eval_specific_kwargs:
   default:
-    pre_prompt: "Translate the following text from English to Chinese by taking into account the image to resolve any ambiguities.\nEnglish: {source}\nChinese: "
+    pre_prompt: "Translate the following source text from English to Chinese:\n{source}"
 
 metric_list:
   - metric: results
