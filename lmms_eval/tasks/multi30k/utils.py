@@ -1,6 +1,10 @@
 import numpy as np
 from loguru import logger as eval_logger
+<<<<<<< HEAD
 from lmms_eval.tasks.commute.comet_utils.comet import RefCOMET
+=======
+from lmms_eval.tasks.multi30k.comet_utils.comet import RefCOMET
+>>>>>>> f0da86b (update multi30_k)
 
 
 
@@ -31,4 +35,8 @@ def multi30k_aggregate_results(results):
     results = {
                "avg_correct_score": np.mean(segments_scores_correct),
                }
+<<<<<<< HEAD
     return results
+=======
+    return results
+>>>>>>> f0da86b (update multi30_k)
