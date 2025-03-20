@@ -60,6 +60,26 @@ def get_results_maxm(results, task_name, model_name):
         })
     return rows
 
+def get_results_cc_ocr(results, task_name, model_name):
+    rows = []
+    scores = {}
+    scores["de"] = float(results["cc-ocr-multi-lan-de"]["ocr_results,none"]["macro_f1_score"]) * 100
+    scores["es"] = float(results["cc-ocr-multi-lan-es"]["ocr_results,none"]["macro_f1_score"]) * 100
+    scores["fr"] = float(results["cc-ocr-multi-lan-fr"]["ocr_results,none"]["macro_f1_score"]) * 100
+    scores["it"] = float(results["cc-ocr-multi-lan-it"]["ocr_results,none"]["macro_f1_score"]) * 100
+    scores["ko"] = float(results["cc-ocr-multi-lan-ko"]["ocr_results,none"]["macro_f1_score"]) * 100
+    scores["pt"] = float(results["cc-ocr-multi-lan-pt"]["ocr_results,none"]["macro_f1_score"]) * 100
+    scores["ru"] = float(results["cc-ocr-multi-lan-ru"]["ocr_results,none"]["macro_f1_score"]) * 100
+    
+    for kk, vv in scores.items():
+        rows.append({
+            "model": model_name,
+            "task": task_name,
+            "language": kk,
+            "score": vv
+        })
+    return rows
+
 def get_results_mme(results, task_name, model_name):
     rows = []
     scores = {}
@@ -224,6 +244,7 @@ result_functions = {
     # "xm100": get_results_xm100,
     "xmmmu": get_results_xmmmu,
     "ai2d": get_results_ai2d,
+    "cc-ocr-multi-lan": get_results_cc_ocr
 }
 
 
