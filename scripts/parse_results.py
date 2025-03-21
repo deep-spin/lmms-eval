@@ -261,6 +261,28 @@ def get_results_commute(results, task_name, model_name):
         })
     return rows   
 
+def get_results_alm_bench(results, task_name, model_name):
+    rows = []
+    scores = {}
+    scores["de"] = float(results["alm_bench-de"]["exact_match,none"]) * 100
+    scores["es"] = float(results["alm_bench-es"]["exact_match,none"]) * 100
+    scores["fr"] = float(results["alm_bench-fr"]["exact_match,none"]) * 100
+    scores["it"] = float(results["alm_bench-it"]["exact_match,none"]) * 100
+    scores["ko"] = float(results["alm_bench-ko"]["exact_match,none"]) * 100
+    scores["nl"] = float(results["alm_bench-nl"]["exact_match,none"]) * 100
+    scores["pt"] = float(results["alm_bench-pt"]["exact_match,none"]) * 100
+    scores["ru"] = float(results["alm_bench-ru"]["exact_match,none"]) * 100
+    scores["en"] = float(results["alm_bench-en"]["exact_match,none"]) * 100
+    
+    for kk, vv in scores.items():
+        rows.append({
+            "model": model_name,
+            "task": task_name,
+            "language": kk,
+            "score": vv
+        })
+    return rows   
+
 def process_results(data, task_name, model_name):
     results = data["results"]
     results = result_functions[task_name](results, task_name, model_name)
@@ -282,7 +304,8 @@ result_functions = {
     "ai2d": get_results_ai2d,
     "cc-ocr-multi-lan": get_results_cc_ocr,
     "multi30k-all": get_results_multi30k,
-    "commute-all-contrastive": get_results_commute
+    "commute-all-contrastive": get_results_commute,
+    "alm_bench-all": get_results_alm_bench
 }
 
 
