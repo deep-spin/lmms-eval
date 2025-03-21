@@ -17,7 +17,7 @@ def base64_to_bytes(base64_string):
     return img_bytes
 
 
-def ccocr_process_docs(docs):
+def ccocr_process_docs_de(docs):
     """
     Process documents by converting base64 images to PIL Images
     
@@ -26,15 +26,112 @@ def ccocr_process_docs(docs):
     Returns:
         Dataset with converted PIL images
     """
-    logger.info(f"Converting base64 images to PIL Images...")
+    logger.info(f"Selecting specific language and converting base64 images to PIL Images...")
     # Process images in place
     # docs = docs.select(range(20)) # filter out some samples!
-    docs = docs.map(
-        lambda doc: {
-            'image': base64_to_bytes(doc['image'])
-        }
-    )
+    filter_docs = docs.filter(lambda doc: doc['split'] == 'German')
+    docs = filter_docs.map( lambda doc: {'image': base64_to_bytes(doc['image'])})
     return docs
+
+def ccocr_process_docs_es(docs):
+    """
+    Process documents by converting base64 images to PIL Images
+    
+    Args:
+        docs: Dataset object containing documents with base64 encoded images
+    Returns:
+        Dataset with converted PIL images
+    """
+    logger.info(f"Selecting specific language and converting base64 images to PIL Images...")
+    # Process images in place
+    # docs = docs.select(range(20)) # filter out some samples!
+    filter_docs = docs.filter(lambda doc: doc['split'] == 'Spanish')
+    docs = filter_docs.map( lambda doc: {'image': base64_to_bytes(doc['image'])})
+    return docs
+
+
+def ccocr_process_docs_fr(docs):
+    """
+    Process documents by converting base64 images to PIL Images
+    
+    Args:
+        docs: Dataset object containing documents with base64 encoded images
+    Returns:
+        Dataset with converted PIL images
+    """
+    logger.info(f"Selecting specific language and converting base64 images to PIL Images...")
+    # Process images in place
+    # docs = docs.select(range(20)) # filter out some samples!
+    filter_docs = docs.filter(lambda doc: doc['split'] == 'French')
+    docs = filter_docs.map( lambda doc: {'image': base64_to_bytes(doc['image'])})
+    return docs
+
+def ccocr_process_docs_it(docs):
+    """
+    Process documents by converting base64 images to PIL Images
+    
+    Args:
+        docs: Dataset object containing documents with base64 encoded images
+    Returns:
+        Dataset with converted PIL images
+    """
+    logger.info(f"Selecting specific language and converting base64 images to PIL Images...")
+    # Process images in place
+    # docs = docs.select(range(20)) # filter out some samples!
+    filter_docs = docs.filter(lambda doc: doc['split'] == 'Italian')
+    docs = filter_docs.map( lambda doc: {'image': base64_to_bytes(doc['image'])})
+    return docs
+
+
+def ccocr_process_docs_ko(docs):
+    """
+    Process documents by converting base64 images to PIL Images
+    
+    Args:
+        docs: Dataset object containing documents with base64 encoded images
+    Returns:
+        Dataset with converted PIL images
+    """
+    logger.info(f"Selecting specific language and converting base64 images to PIL Images...")
+    # Process images in place
+    # docs = docs.select(range(20)) # filter out some samples!
+    filter_docs = docs.filter(lambda doc: doc['split'] == 'Korean')
+    docs = filter_docs.map( lambda doc: {'image': base64_to_bytes(doc['image'])})
+    return docs
+
+def ccocr_process_docs_pt(docs):
+    """
+    Process documents by converting base64 images to PIL Images
+    
+    Args:
+        docs: Dataset object containing documents with base64 encoded images
+    Returns:
+        Dataset with converted PIL images
+    """
+    logger.info(f"Selecting specific language and converting base64 images to PIL Images...")
+    # Process images in place
+    # docs = docs.select(range(20)) # filter out some samples!
+    filter_docs = docs.filter(lambda doc: doc['split'] == 'Portuguese')
+    docs = filter_docs.map( lambda doc: {'image': base64_to_bytes(doc['image'])})
+    return docs
+
+
+def ccocr_process_docs_ru(docs):
+    """
+    Process documents by converting base64 images to PIL Images
+    
+    Args:
+        docs: Dataset object containing documents with base64 encoded images
+    Returns:
+        Dataset with converted PIL images
+    """
+    logger.info(f"Selecting specific language and converting base64 images to PIL Images...")
+    # Process images in place
+    # docs = docs.select(range(20)) # filter out some samples!
+    filter_docs = docs.filter(lambda doc: doc['split'] == 'Russian')
+    docs = filter_docs.map( lambda doc: {'image': base64_to_bytes(doc['image'])})
+    return docs
+
 
 def ccocr_doc_to_visual(doc):
     image = Image.open(BytesIO(doc["image"]))

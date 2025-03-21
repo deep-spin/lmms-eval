@@ -7,17 +7,9 @@ test_split: test
 
 dataset_kwargs:
   token: True
-  data_files:
-    test: [ #"multi_lan_ocr/German/*.tsv", 
-    # "multi_lan_ocr/French/*.tsv", 
-    # "multi_lan_ocr/Italian/*.tsv" ,
-    # "multi_lan_ocr/Korean/*.tsv",
-    #  "multi_lan_ocr/Portuguese/*.tsv",
-    #  "multi_lan_ocr/Russian/*.tsv",
-     "multi_lan_ocr/Spanish/*.tsv"
-     ] 
+ 
 
-process_docs:  !function utils.ccocr_process_docs
+process_docs:  !function utils.ccocr_process_docs_es
 doc_to_visual: !function utils.ccocr_doc_to_visual
 doc_to_text: !function utils.ccocr_doc_to_text
 process_results: !function utils.ccocr_process_results
@@ -25,7 +17,7 @@ doc_to_target: "answer"
 
 output_type: generate_until
 generation_kwargs:
-  max_new_tokens: 128
+  max_new_tokens: 1024
   temperature: 0
   do_sample: False
 
