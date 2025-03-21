@@ -2,6 +2,7 @@ from PIL import Image
 import re
 import sys
 import numpy as np 
+
 def exact_match(pred, target):
     if pred == target:
         return 1
@@ -53,28 +54,3 @@ def alm_bench_process_results(doc, results):
 def alm_bench_doc_to_target(doc, model_specific_target_kwargs):
     true_answer, _ = split_answer_options(doc["Translated_Answer"])
     return true_answer
-
-#what if I report per language answers?
-
-## Here the results dict would have 'score' and 'language' keys
-
-# def alm_bench_aggregate_results(results):
-#     lang_dict = {
-#         "English": [],
-#         "Dutch": [],
-#         "Korean": [],
-#         "Chinese (Simplified)": [],
-#         "Spanish": [],
-#         "Italian": [],
-#         "Russian": [],
-#         "French": [],
-#         "Portuguese": [],
-#         "German": [],
-#     }
-#     for res in results:
-#         lang_dict[res["results"]["language"]].append(res["results"]["score"])
-
-#     for lang in lang_dict.keys():
-#         lang_dict[lang] = sum(lang_dict[lang])/len(lang_dict[lang])
-    
-#     return lang_dict

@@ -1,0 +1,27 @@
+dataset_path: sonalsannigrahi/alm-bench-lang-split
+task: "alm-bench-de"
+test_split: German
+output_type: generate_until
+doc_to_visual: !function utils.alm_bench_doc_to_visual
+doc_to_text: !function utils.alm_bench_doc_to_text
+doc_to_target: !function utils.alm_bench_doc_to_target
+generation_kwargs:
+  max_new_tokens: 128
+  temperature: 0
+  do_sample: False
+metric_list:
+  - metric: exact_match
+    aggregation: mean
+    higher_is_better: true
+metadata:
+  - version: 0.0
+model_specific_target_kwargs:
+  default: "mcq"
+lmms_eval_specific_kwargs:
+  default:
+    prompt_format: "mcq"
+    pre_prompt: "For the given Multiple Choice Question Answer below, analyze the question and answer strictly from one of the options below. Strictly answer the choice only. No additional text."
+    post_prompt: ""
+  qwen_vl:
+    pre_prompt: ""
+    post_prompt: " Answer:"
