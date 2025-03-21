@@ -12,7 +12,8 @@ lmms_eval_specific_kwargs:
   default:
     prompt_format: mcq
     pre_prompt: ""
-    post_prompt: "\nAnswer with the option's letter from the given choices directly."
+    post_prompt: ""
+    # post_prompt: "\nAnswer with the option's letter from the given choices directly."
   gpt4v: 
     prompt_format: mcq
     pre_prompt: ""
@@ -31,7 +32,7 @@ model_specific_target_kwargs:
   qwen_vl: "qa"
 
 generation_kwargs:
-  max_new_tokens: 16
+  max_new_tokens: 8192
   temperature: 0
   do_sample: False
 
