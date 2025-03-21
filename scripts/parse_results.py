@@ -60,6 +60,26 @@ def get_results_maxm(results, task_name, model_name):
         })
     return rows
 
+def get_results_cc_ocr(results, task_name, model_name):
+    rows = []
+    scores = {}
+    scores["de"] = float(results["cc-ocr-multi-lan-de"]["ocr_results,none"]["macro_f1_score"]) * 100
+    scores["es"] = float(results["cc-ocr-multi-lan-es"]["ocr_results,none"]["macro_f1_score"]) * 100
+    scores["fr"] = float(results["cc-ocr-multi-lan-fr"]["ocr_results,none"]["macro_f1_score"]) * 100
+    scores["it"] = float(results["cc-ocr-multi-lan-it"]["ocr_results,none"]["macro_f1_score"]) * 100
+    scores["ko"] = float(results["cc-ocr-multi-lan-ko"]["ocr_results,none"]["macro_f1_score"]) * 100
+    scores["pt"] = float(results["cc-ocr-multi-lan-pt"]["ocr_results,none"]["macro_f1_score"]) * 100
+    scores["ru"] = float(results["cc-ocr-multi-lan-ru"]["ocr_results,none"]["macro_f1_score"]) * 100
+    
+    for kk, vv in scores.items():
+        rows.append({
+            "model": model_name,
+            "task": task_name,
+            "language": kk,
+            "score": vv
+        })
+    return rows
+
 def get_results_mme(results, task_name, model_name):
     rows = []
     scores = {}
@@ -205,6 +225,42 @@ def get_results_ai2d(results, task_name, model_name):
         })
     return rows
 
+def get_results_multi30k(results, task_name, model_name):
+    rows = []
+    scores = {}
+    scores["de"] = float(results["multi30k-de"]["results,none"]["avg_XCOMET-XL_score"]) * 100
+    scores["fr"] = float(results["multi30k-fr"]["results,none"]["avg_XCOMET-XL_score"]) * 100
+    scores["cs"] = float(results["multi30k-cs"]["results,none"]["avg_XCOMET-XL_score"]) * 100
+    
+    for kk, vv in scores.items():
+        rows.append({
+            "model": model_name,
+            "task": task_name,
+            "language": kk,
+            "score": vv
+        })
+    return rows    
+
+def get_results_commute(results, task_name, model_name):
+    rows = []
+    scores = {}
+    scores["ar"] = float(results["commute-ar"]["results,none"]["contrastive_accuracy"]) * 100
+    scores["cs"] = float(results["commute-cs"]["results,none"]["contrastive_accuracy"]) * 100
+    scores["de"] = float(results["commute-de"]["results,none"]["contrastive_accuracy"]) * 100
+    scores["es"] = float(results["commute-es"]["results,none"]["contrastive_accuracy"]) * 100
+    scores["fr"] = float(results["commute-fr"]["results,none"]["contrastive_accuracy"]) * 100
+    scores["ru"] = float(results["commute-ru"]["results,none"]["contrastive_accuracy"]) * 100
+    scores["zh"] = float(results["commute-zh"]["results,none"]["contrastive_accuracy"]) * 100
+    
+    for kk, vv in scores.items():
+        rows.append({
+            "model": model_name,
+            "task": task_name,
+            "language": kk,
+            "score": vv
+        })
+    return rows   
+
 def process_results(data, task_name, model_name):
     results = data["results"]
     results = result_functions[task_name](results, task_name, model_name)
@@ -224,6 +280,9 @@ result_functions = {
     # "xm100": get_results_xm100,
     "xmmmu": get_results_xmmmu,
     "ai2d": get_results_ai2d,
+    "cc-ocr-multi-lan": get_results_cc_ocr,
+    "multi30k-all": get_results_multi30k,
+    "commute-all-contrastive": get_results_commute
 }
 
 

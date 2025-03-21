@@ -1,4 +1,4 @@
-dataset_path: MBZUAI/ALM-Bench
+dataset_path: sonalsannigrahi/alm-bench-mcq-subset
 task: "alm-bench"
 test_split: test
 output_type: generate_until
@@ -11,7 +11,7 @@ generation_kwargs:
   do_sample: False
 process_results: !function utils.alm_bench_process_results
 metric_list:
-  - metric: mcq
+  - metric: results
     aggregation: mean
     higher_is_better: true
 metadata:
@@ -21,7 +21,7 @@ model_specific_target_kwargs:
 lmms_eval_specific_kwargs:
   default:
     prompt_format: "mcq"
-    pre_prompt: "For the given Multiple Choice Question Answer below, analyze the question and answer strictly from one of the options below. Strictly answer the choice only. No additional text."
+    pre_prompt: "For the given the Multiple Choice Question Answer below, analyze the question and answer strictly from one of the options below. Strictly answer the choice only. No additional text."
     post_prompt: ""
   qwen_vl:
     pre_prompt: ""
