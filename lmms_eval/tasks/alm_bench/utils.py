@@ -1,6 +1,7 @@
 from PIL import Image
 import re
 import sys
+import numpy as np 
 def exact_match(pred, target):
     if pred == target:
         return 1
@@ -33,38 +34,47 @@ def split_answer_options(text):
     return None, None
 
 def alm_bench_doc_to_text(doc, lmms_eval_specific_kwargs):
-    # Process MCQ question to extract answer, at the moment since we are not filtered the data set, I only process MCQ question types
     question = doc["Translated_Question"]
     pre_prompt = lmms_eval_specific_kwargs["pre_prompt"]
     post_prompt = lmms_eval_specific_kwargs["post_prompt"]
     post_prompt = lmms_eval_specific_kwargs["post_prompt"]
-    pre_prompt = lmms_eval_specific_kwargs["pre_prompt"]
-    if lmms_eval_specific_kwargs["prompt_format"] == "mcq" and doc["Question_Type"] == "Multiple Choice Questions":
-        _, choices = split_answer_options(doc["Translated_Answer"])
-        full_prompt = f"{pre_prompt} {question}\n{choices}{post_prompt}"
-        return full_prompt
-    else:
-        return "WRONG PROMPT. Write no answer. "
+    _, choices = split_answer_options(doc["Translated_Answer"])
+    full_prompt = f"{pre_prompt} {question}\n{choices}{post_prompt}"
+    return full_prompt
 
 
 def alm_bench_process_results(doc, results):
     pred = results[0]
-    type = doc["Question_Type"]
-    return_dict = {"mcq": 0, "others": 0}
-    if type == "Multiple Choice Questions":
-        target = doc["Translated_Answer"].split(" (Options: ")[0]
-        match = exact_match(pred, target)
-        return_dict["mcq"] = match
-    else:
-        return_dict["others"] = 0
-    return return_dict
+    target, _ = split_answer_options(doc["Translated_Answer"])
+    match = exact_match(pred, target)
+    return {"results": match}
 
 
 def alm_bench_doc_to_target(doc, model_specific_target_kwargs):
-    if model_specific_target_kwargs == "mcq":
-        true_answer, _ = split_answer_options(doc["Translated_Answer"])
-        return true_answer
-    # elif model_specific_target_kwargs == "tf":
-    #     return doc["Translated_Answer"]
-    else:
-        return "NO ANSWER"
+    true_answer, _ = split_answer_options(doc["Translated_Answer"])
+    return true_answer
+
+#what if I report per language answers?
+
+## Here the results dict would have 'score' and 'language' keys
+
+# def alm_bench_aggregate_results(results):
+#     lang_dict = {
+#         "English": [],
+#         "Dutch": [],
+#         "Korean": [],
+#         "Chinese (Simplified)": [],
+#         "Spanish": [],
+#         "Italian": [],
+#         "Russian": [],
+#         "French": [],
+#         "Portuguese": [],
+#         "German": [],
+#     }
+#     for res in results:
+#         lang_dict[res["results"]["language"]].append(res["results"]["score"])
+
+#     for lang in lang_dict.keys():
+#         lang_dict[lang] = sum(lang_dict[lang])/len(lang_dict[lang])
+    
+#     return lang_dict
