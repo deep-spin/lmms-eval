@@ -264,15 +264,15 @@ def get_results_commute(results, task_name, model_name):
 def get_results_alm_bench(results, task_name, model_name):
     rows = []
     scores = {}
-    scores["de"] = float(results["alm_bench-de"]["exact_match,none"]) * 100
-    scores["es"] = float(results["alm_bench-es"]["exact_match,none"]) * 100
-    scores["fr"] = float(results["alm_bench-fr"]["exact_match,none"]) * 100
-    scores["it"] = float(results["alm_bench-it"]["exact_match,none"]) * 100
-    scores["ko"] = float(results["alm_bench-ko"]["exact_match,none"]) * 100
-    scores["nl"] = float(results["alm_bench-nl"]["exact_match,none"]) * 100
-    scores["pt"] = float(results["alm_bench-pt"]["exact_match,none"]) * 100
-    scores["ru"] = float(results["alm_bench-ru"]["exact_match,none"]) * 100
-    scores["en"] = float(results["alm_bench-en"]["exact_match,none"]) * 100
+    scores["de"] = float(results["alm-bench-de"]["exact_match,none"]) * 100
+    scores["es"] = float(results["alm-bench-es"]["exact_match,none"]) * 100
+    scores["fr"] = float(results["alm-bench-fr"]["exact_match,none"]) * 100
+    scores["it"] = float(results["alm-bench-it"]["exact_match,none"]) * 100
+    scores["ko"] = float(results["alm-bench-ko"]["exact_match,none"]) * 100
+    scores["nl"] = float(results["alm-bench-nl"]["exact_match,none"]) * 100
+    scores["pt"] = float(results["alm-bench-pt"]["exact_match,none"]) * 100
+    scores["ru"] = float(results["alm-bench-ru"]["exact_match,none"]) * 100
+    scores["en"] = float(results["alm-bench-en"]["exact_match,none"]) * 100
     
     for kk, vv in scores.items():
         rows.append({
