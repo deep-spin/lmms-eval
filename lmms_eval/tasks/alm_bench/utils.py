@@ -27,7 +27,7 @@ def split_answer_options(text):
         "German": "Optionen",
     }
     text = text.strip()
-    match = re.match(r"^(.*?)\s*\((?:Options|Opties|옵션|选项|Opciones|opzioni|Варианты|choix|Opções|Optionen):\s*(.*?)\)$", text, re.IGNORECASE)
+    match = re.match(r"^(.*?)\s*\((?:Options|Opties|옵션|选项|Opciones|opzioni|Варианты|choix |Opções|Optionen):\s*(.*?)\)$", text, re.IGNORECASE)
     if match:
         true_answer = match.group(1).strip()
         choices = re.sub("\s*,\s*", "\n", match.group(2))
