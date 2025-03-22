@@ -9,22 +9,21 @@ from accelerate import Accelerator, DistributedType
 from loguru import logger as eval_logger
 from PIL import Image
 from tqdm import tqdm
-
+import io
+import base64
 from lmms_eval.api.instance import Instance
 from lmms_eval.api.model import lmms
 from lmms_eval.api.registry import register_model
 
-try:
-    import google.generativeai as genai
-    from google.generativeai.types import HarmBlockThreshold, HarmCategory
+from google import genai
+from google.genai import types
+# import google.generativeai as genai
+# from google.generativeai.types import HarmBlockThreshold, HarmCategory
 
-    NUM_SECONDS_TO_SLEEP = 30
-    GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-    genai.configure(api_key=GOOGLE_API_KEY)
+NUM_SECONDS_TO_SLEEP = 30
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+# genai.configure(api_key=GOOGLE_API_KEY)
 
-except Exception as e:
-    eval_logger.error(f"Error importing generativeai: {str(e)}")
-    genai = None
 
 try:
     import soundfile as sf
@@ -37,17 +36,18 @@ class GeminiAPI(lmms):
     def __init__(
         self,
         model_version: str = "gemini-1.5-pro",
-        # modality: str = "image",
+        modality: str = "image",
         timeout: int = 120,
         continual_mode: bool = False,
         response_persistent_folder: str = "./logs/gemini_persistent_folder",
-        # We will cache the Gemini API response in this path and use it for future requests
+        system_prompt: str = None,
         **kwargs,
     ) -> None:
         super().__init__()
         self.model_version = model_version
         self.timeout = timeout
-        self.model = genai.GenerativeModel(model_version)
+        # self.model = genai.GenerativeModel(model_version)
+        self.model = genai.Client(api_key=GOOGLE_API_KEY)
         self.continual_mode = continual_mode
         # if self.continual_mode and response_persistent_folder is None:
         #     raise ValueError("Continual mode requires a persistent path for the response. We will cache the Gemini API response in this path and use it for future requests. Please provide a valid path.")
@@ -57,13 +57,13 @@ class GeminiAPI(lmms):
                 os.makedirs(self.response_persistent_folder)
             self.response_persistent_file = os.path.join(self.response_persistent_folder, f"{self.model_version}_response.json")
 
-        if os.path.exists(self.response_persistent_file):
-            with open(self.response_persistent_file, "r") as f:
-                self.response_cache = json.load(f)
-            self.cache_mode = "resume"
-        else:
-            self.response_cache = {}
-            self.cache_mode = "start"
+        # if os.path.exists(self.response_persistent_file):
+        #     with open(self.response_persistent_file, "r") as f:
+        #         self.response_cache = json.load(f)
+        #     self.cache_mode = "resume"
+        # else:
+        #     self.response_cache = {}
+        self.cache_mode = "start"
 
         accelerator = Accelerator()
         if accelerator.num_processes > 1:
@@ -81,9 +81,10 @@ class GeminiAPI(lmms):
 
         self.device = self.accelerator.device
 
-        # self.modality = modality
+        self.modality = modality
 
         self.video_pool = []
+        self.system_prompt = system_prompt
 
     def free_video(self):
         for video in self.video_pool:
@@ -132,6 +133,14 @@ class GeminiAPI(lmms):
                     eval_logger.error(f"Error converting video: {str(e)}")
         return images
 
+    def get_image_url(self, image_bytes: bytes) -> str:
+        buffer = io.BytesIO()
+        image_bytes.save(buffer, format="JPEG")
+        img_bytes = buffer.getvalue()
+        base64_image = base64.b64encode(img_bytes).decode('utf-8')
+        data_url = f"data:image/jpeg;base64,{base64_image}"
+        return data_url
+
     def generate_until(self, requests) -> List[str]:
         res = []
         pbar = tqdm(total=len(requests), disable=(self.rank != 0), desc="Model Responding")
@@ -140,51 +149,36 @@ class GeminiAPI(lmms):
             return f"{task}___{split}___{doc_id}"
 
         for contexts, gen_kwargs, doc_to_visual, doc_id, task, split in [reg.args for reg in requests]:
-            if self.continual_mode and self.cache_mode == "resume":
-                doc_uuid = get_uuid(task, split, doc_id)
-                if doc_uuid in self.response_cache:
-                    content = self.response_cache[doc_uuid]
-                    if content:
-                        res.append(content)
-                        pbar.update(1)
-                        continue
+
 
             if "max_new_tokens" not in gen_kwargs:
                 gen_kwargs["max_new_tokens"] = 1024
             if "temperature" not in gen_kwargs:
                 gen_kwargs["temperature"] = 0
 
-            config = genai.GenerationConfig(
-                max_output_tokens=gen_kwargs["max_new_tokens"],
-                temperature=gen_kwargs["temperature"],
-            )
-
             visuals = [doc_to_visual(self.task_dict[task][split][doc_id])]
-            visuals = self.flatten(visuals)
+
             visuals = self.convert_modality(visuals)
 
             message = [contexts] + visuals
 
             for attempt in range(5):
                 try:
-                    content = self.model.generate_content(
-                        message,
-                        generation_config=config,
-                        safety_settings={
-                            HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
-                            HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
-                            HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
-                            HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
-                        },
-                    )
-                    content = content.text
+                    response = self.model.models.generate_content(
+                        model=self.model_version,
+                        config=types.GenerateContentConfig(
+                        system_instruction=self.system_prompt,
+                        ),
+                        contents=message
+                        )
+                    results = response.text
                     break
                 except Exception as e:
                     eval_logger.info(f"Attempt {attempt + 1} failed with error: {str(e)}")
                     if isinstance(e, ValueError):
                         try:
-                            eval_logger.info(f"Prompt feed_back: {content.prompt_feedback}")
-                            content = ""
+                            eval_logger.info(f"Prompt feed_back: {results.prompt_feedback}")
+                            results = ""
                             break
                         except Exception:
                             pass
@@ -193,7 +187,7 @@ class GeminiAPI(lmms):
                     else:  # If this was the last attempt, log and return empty
                         eval_logger.error(f"All 5 attempts failed. Last error message: {str(e)}")
                         content = ""
-            res.append(content)
+            res.append(results)
             pbar.update(1)
 
             self.free_video()
