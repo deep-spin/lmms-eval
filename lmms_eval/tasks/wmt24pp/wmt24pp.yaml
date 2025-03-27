@@ -1,23 +1,23 @@
 group: wmt24pp
 task:
-  # - wmt24pp.en-de
-  # - wmt24pp.en-fr
-  # - wmt24pp.en-cs
-  # - wmt24pp.en-pt
-  # - wmt24pp.en-it
-  # - wmt24pp.en-ko
-  # - wmt24pp.en-nl
-  # - wmt24pp.en-ru
-  # - wmt24pp.en-es
-  # - wmt24pp.en-zh
-  # - wmt24pp.de-en
-  # - wmt24pp.fr-en
-  # - wmt24pp.cs-en
-  # - wmt24pp.pt-en
-  # - wmt24pp.it-en
-  # - wmt24pp.ko-en
-  # - wmt24pp.nl-en
-  # - wmt24pp.ru-en
-  # - wmt24pp.es-en
+  - wmt24pp.en-de
+  - wmt24pp.en-fr
+  - wmt24pp.en-cs
+  - wmt24pp.en-pt
+  - wmt24pp.en-it
+  - wmt24pp.en-ko
+  - wmt24pp.en-nl
+  - wmt24pp.en-ru
+  - wmt24pp.en-es
+  - wmt24pp.en-zh
+  - wmt24pp.de-en
+  - wmt24pp.fr-en
+  - wmt24pp.cs-en
+  - wmt24pp.pt-en
+  - wmt24pp.it-en
+  - wmt24pp.ko-en
+  - wmt24pp.nl-en
+  - wmt24pp.ru-en
+  - wmt24pp.es-en
   - wmt24pp.zh-en
 

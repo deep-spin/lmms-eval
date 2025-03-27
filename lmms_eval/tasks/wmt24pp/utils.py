@@ -4,11 +4,11 @@ from lmms_eval.tasks.multi30k.comet_utils.comet import RefCOMET
 
 def process_docs(docs):
     # docs = docs.select(range(10))
-    docs = docs.filter(lambda x: x["is_bad_source"] != "true")
+    # docs = docs.filter(lambda x: x["is_bad_source"] != "true")
     return docs
 
 def process_docs_reverse(docs):
-    docs = docs.select(range(10))
+    # docs = docs.select(range(10))
     # docs = docs.filter(lambda x: x["is_bad_source"] != "true")
     # Swap source and target
     docs = docs.map(lambda x: {
