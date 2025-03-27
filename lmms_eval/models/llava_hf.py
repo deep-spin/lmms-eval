@@ -319,6 +319,8 @@ class LlavaHf(lmms):
                     image_tokens = [DEFAULT_IMAGE_TOKEN] * len(visuals)
                 elif task_type == "video":
                     image_tokens = [DEFAULT_VIDEO_TOKEN] * len(visuals)
+                elif task_type == "text":
+                    image_tokens = []
                 image_tokens = " ".join(image_tokens)
                 context = f"{image_tokens}\n{context}"
             # Apply chat template
@@ -347,7 +349,8 @@ class LlavaHf(lmms):
                 inputs = self._image_processor(images=visuals, text=text, return_tensors="pt").to(self._device, self.model.dtype)
             elif task_type == "video":
                 inputs = self._image_processor(videos=visuals, text=text, return_tensors="pt").to(self._device, self.model.dtype)
-
+            elif task_type == "text":
+                inputs = self._image_processor(text=text, return_tensors="pt").to(self._device, self.model.dtype)
             gen_kwargs["image_sizes"] = [visuals[idx].size for idx in range(len(visuals))]
             if "max_new_tokens" not in gen_kwargs:
                 gen_kwargs["max_new_tokens"] = 1024
