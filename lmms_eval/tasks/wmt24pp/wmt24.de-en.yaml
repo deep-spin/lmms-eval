@@ -4,9 +4,9 @@ test_split: "train"
 dataset_name: "en-de_DE"
 
 output_type: generate_until
-# process_docs: !function utils.process_docs
+process_docs: !function utils.process_docs_reverse
 doc_to_visual: !function utils.doc_to_visual
-doc_to_text: !function utils.doc_to_text_reverse
+doc_to_text: !function utils.doc_to_text
 doc_to_target: "en"
 
 generation_kwargs:
@@ -16,7 +16,7 @@ generation_kwargs:
   num_beams: 1
   do_sample: false
 
-process_results: !function utils.process_results_reverse
+process_results: !function utils.process_results
 
 metric_list:
   - metric: results
