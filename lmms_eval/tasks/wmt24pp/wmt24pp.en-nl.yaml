@@ -1,14 +1,13 @@
 dataset_path: google/wmt24pp
-task: "wmt24pp.fr-en"
+task: "wmt24pp.en-nl"
 test_split: "train"
-dataset_name: "en-fr_FR"
-
+dataset_name: "en-nl_NL"
 
 output_type: generate_until
-process_docs: !function utils.process_docs_reverse
+# process_docs: !function utils.process_docs
 doc_to_visual: !function utils.doc_to_visual
 doc_to_text: !function utils.doc_to_text
-doc_to_target: "en"
+doc_to_target: "nl"
 
 generation_kwargs:
   max_new_tokens: 1024
@@ -31,11 +30,5 @@ metadata:
 
 lmms_eval_specific_kwargs:
   default:
-    pre_prompt: "Translate the following source text from French to English:\n{source}"
-    post_prompt: ""
-  qwen_vl:
-    pre_prompt: ""
-    post_prompt: " Answer:"
-
-
-
+    pre_prompt: "Translate the following English source text to Dutch.\nEnglish:"
+    post_prompt: "Dutch:"
