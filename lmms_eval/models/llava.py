@@ -137,7 +137,7 @@ class Llava(lmms):
         elif accelerator.num_processes == 1 and device_map == "auto":
             eval_logger.info(f"Using {accelerator.num_processes} devices with tensor parallelism")
             self._rank = 0
-            self._word_size = 1
+            self._world_size = 1
         else:
             eval_logger.info(f"Using single device: {self._device}")
             self.model.to(self._device)
@@ -278,10 +278,13 @@ class Llava(lmms):
         return res
 
     def flatten(self, input):
+        if not input or any(i is None for i in input):
+            return []
         new_list = []
         for i in input:
-            for j in i:
-                new_list.append(j)
+            if i:
+                for j in i:
+                    new_list.append(j)
         return new_list
 
     def generate_until(self, requests: List[Instance]) -> List[str]:
