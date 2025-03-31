@@ -61,6 +61,7 @@ class Pangea(lmms):
         tie_weights: bool = True,
         truncate_context=False,  # whether to truncate the context in generation, set it False for LLaVA-1.6
         customized_config=None,  # ends in json
+        system_prompt=None,
         **kwargs,
     ) -> None:
         super().__init__()
@@ -143,7 +144,7 @@ class Pangea(lmms):
             self._rank = 0
             self._world_size = 1
                 
-
+        self.system_prompt = system_prompt
     @property
     def config(self):
         # return the associated transformers.AutoConfig for the given pretrained model.
@@ -296,7 +297,6 @@ class Pangea(lmms):
             # - any OOMs will happen right away rather than near the end
             toks = self.tok_encode(x[0])
             return -len(toks), x[0]
-
         # we group requests by their generation_kwargs,
         # so that we don't try to execute e.g. greedy sampling and temp=0.8 sampling
         # in the same batch.
@@ -361,6 +361,8 @@ class Pangea(lmms):
                     conv = copy.deepcopy(conv_templates[self.conv_template])
                 else:
                     conv = conv_templates[self.conv_template].copy()
+                if self.system_prompt is not None:
+                    conv.system = "<|im_start|>system\n" + self.system_prompt
                 conv.append_message(conv.roles[0], question)
                 conv.append_message(conv.roles[1], None)
                 prompt_question = conv.get_prompt()
@@ -370,7 +372,7 @@ class Pangea(lmms):
             # preconfigure gen_kwargs with defaults
             gen_kwargs["image_sizes"] = [flattened_visuals[idx].size for idx in range(len(flattened_visuals))]
             if "max_new_tokens" not in gen_kwargs:
-                gen_kwargs["max_new_tokens"] = 1024
+                gen_kwargs["max_new_tokens"] = 4096
             if "temperature" not in gen_kwargs:
                 gen_kwargs["temperature"] = 0
             if "top_p" not in gen_kwargs:
@@ -391,7 +393,7 @@ class Pangea(lmms):
                     pad_token_id=pad_token_ids,
                     images=image_tensor,
                     image_sizes=gen_kwargs["image_sizes"],
-                    do_sample=True if gen_kwargs["temperature"] > 0 else False,
+                    do_sample=gen_kwargs["temperature"] > 0,
                     temperature=gen_kwargs["temperature"],
                     top_p=gen_kwargs["top_p"],
                     num_beams=gen_kwargs["num_beams"],
