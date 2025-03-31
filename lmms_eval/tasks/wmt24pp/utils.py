@@ -3,7 +3,7 @@ from lmms_eval.tasks.multi30k.comet_utils.comet import RefCOMET
 
 def process_docs(docs):
     # docs = docs.select(range(10))
-    # docs = docs.filter(lambda x: x["is_bad_source"] != "true")
+    docs = docs.filter(lambda x: x["is_bad_source"] != "true")
     return docs
 
 def doc_to_text(doc, lmms_eval_specific_kwargs):
@@ -24,9 +24,9 @@ def process_results(doc, results):
 
 def aggregate_results(results):
     comet = RefCOMET(model="Unbabel/XCOMET-XL")
-    sources = [res["source"] for res in results]
-    hypotheses = [res["prediction"] for res in results]
-    references = [res["ground_truth"] for res in results]
+    sources = [res["source"].strip() for res in results]
+    hypotheses = [res["prediction"].strip() for res in results]
+    references = [res["ground_truth"].strip() for res in results]
     comet.make_samples(sources, hypotheses, references)
     segments_scores_correct = comet.evaluate(hypotheses, references, sources, gpus=1, batch_size=16).result["segments_scores"]
     results = {

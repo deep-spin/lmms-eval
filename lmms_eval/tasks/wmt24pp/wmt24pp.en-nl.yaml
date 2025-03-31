@@ -10,8 +10,8 @@ doc_to_text: !function utils.doc_to_text
 doc_to_target: "nl"
 
 generation_kwargs:
-  max_new_tokens: 1024
-  temperature: 0
+  max_new_tokens: 4096
+  temperature: 0.0
   top_p: 1.0
   num_beams: 1
   do_sample: false
@@ -30,5 +30,5 @@ metadata:
 
 lmms_eval_specific_kwargs:
   default:
-    pre_prompt: "Translate the following English source text to Dutch.\nEnglish:"
-    post_prompt: "Dutch:"
+    pre_prompt: "Translate the following English source text to Duetch.\nEnglish:"
+    post_prompt: "Duetch:"
