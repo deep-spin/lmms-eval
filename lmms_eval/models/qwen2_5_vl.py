@@ -153,8 +153,102 @@ class Qwen2_5_VL(lmms):
         return self._world_size
 
     def loglikelihood(self, requests: List[Instance]) -> List[Tuple[float, bool]]:
-        raise NotImplementedError("Loglikelihood is not implemented for Qwen2.5_VL")
+        # raise NotImplementedError("Loglikelihood is not implemented for Qwen2.5_VL")
+        res = []
+        conversation = []
+        pbar = tqdm(total=len(requests), disable=(self.rank != 0), desc="Model Responding")
+        for contexts, doc_to_target, doc_to_visual, doc_id, task, split in [reg.args for reg in requests]:
+            # encode, pad, and truncate contexts for this batch
+            if type(doc_to_target) == str:
+                continuation = doc_to_target
+            else:
+                continuation = doc_to_target(self.task_dict[task][split][doc_id])
+            visuals = [doc_to_visual(self.task_dict[task][split][doc_id])]
+            visuals = self.flatten(visuals)
+            image_sizes = [[visual.size[0], visual.size[1]] for visual in visuals]
+            message = [{"role": "system", "content": "You are Qwen, created by Alibaba Cloud. You are a helpful assistant."}]
 
+            if len(visuals) > 0:
+                visual = visuals[i] if i < len(visuals) else None
+                if isinstance(visual, str) and visual.endswith((".mp4", ".avi", ".mov")):  # Video file
+                    if self.use_custom_video_loader:
+                        visual = read_video_pyav_base64(visual, num_frm=self.max_num_frames, fps=self.fps, img_format="JPEG", max_image_size=self.max_image_size)
+                        image_contents = list(map(lambda x: f"data:image/jpeg;base64,{x}", visual))
+                        message.append({"role": "user", "content": [{"type": "video", "video": image_contents}, {"type": "text", "text": context}]})
+                    else:
+                        vr = decord.VideoReader(visual)
+                        first_frame = vr[0].asnumpy()
+                        height, width = first_frame.shape[:2]
+                        # max_pixels = height * width
+                        message.append({"role": "user", "content": [{"type": "video", "video": visual, "max_pixels": 360 * 420}, {"type": "text", "text": context}]})
+                elif isinstance(visual, Image.Image):  # Single image
+                    base64_image = visual.convert("RGB")
+                    buffer = BytesIO()
+                    base64_image.save(buffer, format="JPEG")
+                    base64_bytes = base64.b64encode(buffer.getvalue())
+                    base64_string = base64_bytes.decode("utf-8")
+                    message.append({"role": "user", "content": [{"type": "image", "image": f"data:image/jpeg;base64,{base64_string}"}, {"type": "text", "text": context}]})
+                elif isinstance(visual, (list, tuple)) and all(isinstance(v, Image.Image) for v in visual):  # Multiple images
+                    image_content = []
+                    for v in visual:
+                        base64_image = v.convert("RGB")
+                        buffer = BytesIO()
+                        base64_image.save(buffer, format="JPEG")
+                        base64_bytes = base64.b64encode(buffer.getvalue())
+                        base64_string = base64_bytes.decode("utf-8")
+                        image_content.append({"type": "image", "image": f"data:image/jpeg;base64,{base64_string}"})
+                    message.append({"role": "user", "content": image_content + [{"type": "text", "text": contexts}]})
+                else:
+                    message.append({"role": "user", "content": [{"type": "text", "text": contexts}]})
+            else:
+                message.append({"role": "user", "content": [{"type": "text", "text": contexts}]})
+
+            
+            text = self.processor.apply_chat_template(message, tokenize=False, add_generation_prompt=True)
+            image_inputs, video_inputs = process_vision_info(message)
+            context_inputs = self.processor(
+                text=[text],
+                images=image_inputs,
+                videos=video_inputs,
+                # fps=self.fps,
+                padding=True,
+                return_tensors="pt",
+            )
+            if self.device_map == "auto":
+                context_inputs = context_inputs.to("cuda")
+            else:
+                context_inputs = context_inputs.to(self.device)
+
+            message.append({"role": "assistant", "content": continuation})
+            text_output = self.processor.apply_chat_template(message, tokenize=False, add_generation_prompt=False)
+            image_inputs, video_inputs = process_vision_info(message)
+            inputs = self.processor(
+                text=[text_output],
+                images=image_inputs,
+                videos=video_inputs,
+                padding=True,
+                return_tensors="pt",
+            )
+            pad_token_id = self.tokenizer.pad_token_id
+            labels = inputs.input_ids.clone()
+            labels[0, : context_inputs.input_ids.shape[1]] = -100
+
+            with torch.inference_mode(): 
+                outputs = self.model(**inputs,labels=labels)
+            
+            loss = outputs["loss"]
+            # loss = torch.exp(loss)
+            logits = outputs["logits"]
+            greedy_tokens = logits.argmax(dim=-1)
+            cont_toks = inputs.input_ids[:, context_inputs.input_ids.shape[1] :]  # [1, seq]
+            greedy_tokens = greedy_tokens[:, context_inputs.input_ids.shape[1] : inputs.input_ids.shape[1]]  # [1, seq]
+            max_equal = (greedy_tokens == cont_toks).all()
+            res.append((float(loss.item()), bool(max_equal)))
+            pbar.update(1)
+        pbar.close()
+        return res
+
+            
     def flatten(self, input):
         new_list = []
         for i in input:
