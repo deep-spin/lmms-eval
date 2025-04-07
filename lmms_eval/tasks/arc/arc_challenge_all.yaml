@@ -1,0 +1,9 @@
+group: arc_challenge_all
+task:
+  - arc_challenge_eng
+  - arc_challenge_de
+  - arc_challenge_es
+  - arc_challenge_fr
+  - arc_challenge_it
+  - arc_challenge_nl
+  - arc_challenge_pt
