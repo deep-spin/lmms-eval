@@ -188,6 +188,7 @@ class Aya(lmms):
             context_id = self._processor.apply_chat_template(message, padding=True, add_generation_prompt=False, tokenize=True, return_dict=True, return_tensors="pt").to(self._model.device)
             
             # Now we append the continuation to the message to get the full input
+            # NOTE: We are stripping the answer here so that there is no leading space in the answer
             message.append({"role": "assistant", "content": [{"type": "text", "text": continuation.strip()}]})
             input = self._processor.apply_chat_template(message, padding=True, add_generation_prompt=False, tokenize=True, return_dict=True, return_tensors="pt").to(self._model.device)            
             labels = input["input_ids"].clone()
