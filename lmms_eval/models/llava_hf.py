@@ -202,11 +202,13 @@ class LlavaHf(lmms):
             else:
                 continuation = doc_to_target(self.task_dict[task][split][doc_id])
             visuals = [doc_to_visual(self.task_dict[task][split][doc_id])]
-            visuals = self.flatten(visuals)
-
-            image_tokens = [DEFAULT_IMAGE_TOKEN] * len(visuals)
-            image_tokens = " ".join(image_tokens)
-            context = f"{image_tokens}\n{context}"
+            if visuals != [None]:
+                visuals = self.flatten(visuals)
+                image_tokens = [DEFAULT_IMAGE_TOKEN] * len(visuals)
+                image_tokens = " ".join(image_tokens)
+                context = f"{image_tokens}\n{context}"
+            else:
+                visuals = None
             # Apply chat template
             messages = [{"role": "user", "content": context}, {"role": "assistant", "content": continuation}]
             if self.chat_template is not None:
