@@ -211,7 +211,6 @@ class Llava(lmms):
 
     def loglikelihood(self, requests: List[Instance]) -> List[Tuple[float, bool]]:
         # TODO
-        breakpoint()
         res = []
         pbar = tqdm(total=len(requests), disable=(self.rank != 0), desc="Model Responding")
         for contexts, doc_to_target, doc_to_visual, doc_id, task, split in [reg.args for reg in requests]:
@@ -259,13 +258,19 @@ class Llava(lmms):
             pad_token_id = self.tokenizer.pad_token_id if self.tokenizer.pad_token_id is not None else self.tokenizer.eos_token_id
             contxt_id = tokenizer_image_token(prompt, self.tokenizer, IMAGE_TOKEN_INDEX, return_tensors="pt").unsqueeze(0).to(self.device)
             # Add the answer of the second role
-            conv.messages[1][1] = continuation
+            # NOTE: We are stripping the answer here so that there is no leading space in the answer
+            conv.messages[1][1] = continuation.strip()
 
             prompt = conv.get_prompt()
             input_ids = tokenizer_image_token(prompt, self.tokenizer, IMAGE_TOKEN_INDEX, return_tensors="pt").unsqueeze(0).to(self.device)
             labels = input_ids.clone()
             # Context part no need to calculate for loss
             labels[0, : contxt_id.shape[1]] = -100
+            
+            # NOTE: We mask the last two tokens in the labels, which are the EOS and the new line tokens.
+            # This is to avoid calculating loss on these tokens and have a more comparable loss to the other models.
+            labels[0, -2:] = -100
+            
             with torch.inference_mode():
                 outputs = self.model(input_ids=input_ids, labels=labels, images=image, use_cache=True, image_sizes=image_sizes)
             loss = outputs["loss"]
