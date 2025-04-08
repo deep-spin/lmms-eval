@@ -8,6 +8,9 @@ from lmms_eval.api.instance import Instance
 from lmms_eval.api.model import lmms
 from lmms_eval.api.registry import register_model
 
+import torch.nn.functional as F
+import numpy as np
+
 import io
 import base64
 
@@ -149,8 +152,76 @@ class Aya(lmms):
         return self.tokenizer.decode(tokens)
 
     def loglikelihood(self, requests: List[Instance]) -> List[Tuple[float, bool]]:
-        """Not implemented for NVLM model."""
-        raise NotImplementedError("Loglikelihood is not implemented for NVLM model")
+        res = []
+        pbar = tqdm(total=len(requests), disable=(self.rank != 0), desc="Model Responding")
+        for contexts, doc_to_target, doc_to_visual, doc_id, task, split in [reg.args for reg in requests]:
+            # encode, pad, and truncate contexts for this batch
+            if type(doc_to_target) == str:
+                continuation = doc_to_target
+            else:
+                continuation = doc_to_target(self.task_dict[task][split][doc_id])
+            visuals = [doc_to_visual(self.task_dict[task][split][doc_id])]
+            
+            if visuals != [None]:
+                visuals = self.flatten(visuals)
+                image_sizes = [[visual.size[0], visual.size[1]] for visual in visuals]
+                image_urls = [self.get_image_url(v) for v in visuals]
+            else:
+                image_urls = None
+
+            prompts_input = contexts[0] if isinstance(contexts, list) else contexts
+
+            # create chat object
+            message = [
+                {"role": "user",
+                 "content": [
+                     {"type": "text", "text": prompts_input
+                      }]}]
+            if image_urls is not None:
+                message[0]["content"] += [{"type": "image", "url": image_url} for image_url in image_urls]
+
+            if self.add_system_prompt is not None:
+                message.insert(0, {"role": "system", 
+                                   "content": [{"type": "text", "text": self.add_system_prompt}]})
+            
+            # Here we haven't appended the continuation yet, so we can use the original message to get the logits of the full input
+            context_id = self._processor.apply_chat_template(message, padding=True, add_generation_prompt=False, tokenize=True, return_dict=True, return_tensors="pt").to(self._model.device)
+            
+            # Now we append the continuation to the message to get the full input
+            message.append({"role": "assistant", "content": [{"type": "text", "text": continuation.strip()}]})
+            input = self._processor.apply_chat_template(message, padding=True, add_generation_prompt=False, tokenize=True, return_dict=True, return_tensors="pt").to(self._model.device)            
+            labels = input["input_ids"].clone()
+
+            
+            # NOTE: The following solution is just a workaround for the fact that we need to mask the extra tokens in the labels
+            """
+            Context part no need to calculate for loss. That's why we set the labels to -100 for the initial context part
+            The answer part is with the following format:
+            '<|START_OF_TURN_TOKEN|><|CHATBOT_TOKEN|><|START_RESPONSE|>ANSWER<|END_RESPONSE|><|END_OF_TURN_TOKEN|>'
+            So, we have 3 tokens before the answer (<|START_OF_TURN_TOKEN|>, <|CHATBOT_TOKEN|>, <|START_RESPONSE|>)
+            and 2 tokens after the answer (<|END_RESPONSE|>, <|END_OF_TURN_TOKEN|>)
+            We need to set the labels for the answer part to -100, so that they are ignored in the loss calculation
+            """
+            labels[0, : context_id["input_ids"].shape[1]+3] = -100
+            labels[0, -2:] = -100  # last token is also ignored
+            try:
+                # NOTE: We have to set `add_generation_prompt` to False here, because we are not generating text, but rather calculating the log likelihood of the continuation.
+                with torch.inference_mode():
+                    outputs = self._model(**input, labels=labels, add_generation_prompt=False)
+                loss = outputs["loss"]
+                logits = outputs["logits"]
+                greedy_tokens = logits.argmax(dim=-1)
+                cont_toks = input["input_ids"][:, context_id["input_ids"].shape[1] :]  # [1, seq]
+                greedy_tokens = greedy_tokens[:, context_id["input_ids"].shape[1] : input["input_ids"].shape[1]]  # [1, seq]
+                max_equal = (greedy_tokens == cont_toks).all()
+                result = (float(loss.item()), bool(max_equal))
+            except Exception as e:
+                eval_logger.error(f"Error {e} in generating")
+                result = ""
+            res.append(result)
+            pbar.update(1)
+        pbar.close()
+        return res
 
     def flatten(self, input):
         """Flatten a nested list."""
