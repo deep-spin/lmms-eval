@@ -144,6 +144,12 @@ class Llava(lmms):
             self._rank = 0
             self._world_size = 1
         self.system_prompt = system_prompt
+        self.apply_chat_template = True
+    
+    @property
+    def get_chat_template(self):
+        return self._tokenizer.chat_template
+    
     @property
     def config(self):
         # return the associated transformers.AutoConfig for the given pretrained model.
@@ -212,6 +218,7 @@ class Llava(lmms):
     def loglikelihood(self, requests: List[Instance]) -> List[Tuple[float, bool]]:
         # TODO
         res = []
+        breakpoint()
         pbar = tqdm(total=len(requests), disable=(self.rank != 0), desc="Model Responding")
         for contexts, doc_to_target, doc_to_visual, doc_id, task, split in [reg.args for reg in requests]:
             # encode, pad, and truncate contexts for this batch
@@ -231,7 +238,9 @@ class Llava(lmms):
             else:
                 image = None
 
-            prompts_input = contexts[0] if isinstance(contexts, list) else contexts
+            # prompts_input = contexts[0] if isinstance(contexts, list) else contexts
+            prompts_input = contexts
+            prompts_input_0 = contexts[0]
 
             if image is not None and len(image) != 0 and DEFAULT_IMAGE_TOKEN not in prompts_input:
                 """
@@ -249,10 +258,14 @@ class Llava(lmms):
                 conv = copy.deepcopy(conv_templates[self.conv_template])
             else:
                 conv = conv_templates[self.conv_template].copy()
+                conv_0 = conv_templates[self.conv_template].copy()
             if self.system_prompt and conv.system:
                 conv.system = self.system_prompt
+                conv_0.system = self.system_prompt
             conv.append_message(conv.roles[0], prompts_input)
             conv.append_message(conv.roles[1], None)
+            conv_0.append_message(conv_0.roles[0], prompts_input_0)
+            conv_0.append_message(conv_0.roles[1], None)
             prompt = conv.get_prompt()
 
             pad_token_id = self.tokenizer.pad_token_id if self.tokenizer.pad_token_id is not None else self.tokenizer.eos_token_id

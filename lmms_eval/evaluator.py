@@ -237,11 +237,18 @@ def simple_evaluate(
         run_task_tests(task_list=tasks)
 
     if evaluation_tracker is not None:
+        def get_chat_template(lm):
+            if hasattr(lm, "chat_template"):
+                return lm.chat_template
+            elif hasattr(lm.tokenizer, "chat_template"):
+                return lm.tokenizer.chat_template
+            else:
+                return None
         evaluation_tracker.general_config_tracker.log_experiment_args(
             model_source=model,
             model_args=model_args,
             system_instruction=system_instruction,
-            chat_template=lm.chat_template if apply_chat_template else None,
+            chat_template=get_chat_template(lm) if apply_chat_template else None,
             fewshot_as_multiturn=fewshot_as_multiturn,
         )
 

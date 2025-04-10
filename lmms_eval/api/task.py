@@ -1126,6 +1126,32 @@ class ConfigurableTask(Task):
                 eval_logger.warning(f"Task '{self.config.task}': " "num_fewshot > 0 but fewshot_split is None. " "using preconfigured rule.")
             return super().fewshot_docs()
 
+    @staticmethod
+    def append_target_question(
+        labeled_examples: List[Dict[str, str]],
+        question: str,
+        fewshot_as_multiturn: bool = False,
+        gen_prefix: Optional[str] = None,
+    ) -> None:
+        """Adds a target question to the labeled examples list.
+        If fewshot_as_multiturn is True, or labeled_examples is empty, or the last entry is a system turn, appends the question as a new user entry.
+        Otherwise, it is appended to the last user entry, ensuring that the conversation alternates between the user and the assistant.
+        """
+        if not fewshot_as_multiturn:
+            # if no messages or last message is system, append as new user entry
+            if len(labeled_examples) == 0 or labeled_examples[-1]["role"] == "system":
+                labeled_examples.append({"role": "user", "content": question})
+            # if last message is user, append to it to avoid two user messages in a row
+            else:
+                labeled_examples[-1]["content"] += question
+        else:
+            # if fewshot_as_multiturn is True, append as next user entry (last is always assistant)
+            labeled_examples.append({"role": "user", "content": question})
+        if gen_prefix:
+            labeled_examples.append({"role": "assistant", "content": gen_prefix})
+
+
+
     @utils.positional_deprecated
     def fewshot_context(
         self,
@@ -1221,7 +1247,8 @@ class ConfigurableTask(Task):
                     else:
                         self.append_target_question(labeled_examples, str(example), fewshot_as_multiturn)
                     # return lm.apply_chat_template(labeled_examples)
-                return chat_template(labeled_examples)
+                # return chat_template(labeled_examples)
+                return labeled_examples
             else:
                 if self.multiple_input:
                     return labeled_examples
