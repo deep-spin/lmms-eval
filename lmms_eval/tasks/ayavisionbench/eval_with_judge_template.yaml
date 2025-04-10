@@ -1,0 +1,13 @@
+# if comparative, then the judge will compare the baseline model output with the predicted outputs. If the baseline model outputs path is not found, then the predicted outputs will be just saved, without running the judge.
+# if direct assessment, then the judge will just judge the predicted outputs!
+# to disable the judge, set run_judge to false
+run_judge: true
+judge_model_name: gpt-4o-mini
+judge_prompt_type: comparative 
+baseline_model_outputs_path: /mnt/scratch-artemis/manos/data/tower-vision-eval-outputs/tower-vision/text-only-results/aya-vision-bench-gen/Unbabel__lnext-qwen2p5-7b-siglip2-v5/Unbabel__lnext-qwen2p5-7b-siglip2-v5/20250407_230052_samples_aya-vision-bench-gen-eng.jsonl
+max_tokens: 1024
+temperature: 0
+max_retries: 3
+wait_time: 10
+api_key: sk-proj-1234567890
+api_url: https://api.openai.com/v1/chat/completions
