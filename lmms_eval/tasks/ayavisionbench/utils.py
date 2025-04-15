@@ -8,6 +8,11 @@ import os
 from loguru import logger
 from pathlib import Path
 import yaml
+import io
+
+from dotenv import load_dotenv
+
+
 
 from lmms_eval.tasks.ayavisionbench.judge_templates import (
     COMPARATIVE_GEN_USER_PROMPT,
@@ -32,20 +37,37 @@ def get_judge_config():
 
 def run_judge(questions,preds,judge_config,baseline_model_outputs=None,images=None):
     logger.info(f"Selected judge type: {judge_config['judge_prompt_type']}")
-    api_key = judge_config["api_key"]
+    # # Load environment variables from .env file
+    load_dotenv()
+    
     api_url = judge_config["api_url"]
+    # api_key = judge_config["api_key"]
     judge_model_name = judge_config["judge_model_name"]
-    headers = {
+
+    if 'anthropic' in api_url:
+        api_key = os.getenv('ANTHROPIC_API_KEY')
+        headers = {
+        "x-api-key": api_key,  # Different header for Claude
+        "Content-Type": "application/json",
+        "anthropic-version": "2023-06-01"  # Required for Claude
+    }
+    elif 'openai' in api_url:
+        api_key = os.getenv('OPENAI_API_KEY')
+        headers = {
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
         }
+    else:
+        logger.error(f"Invalid Api URL and API key combination")
+        raise ValueError(f"Invalid API URL: {api_url}")
+
     payload = {
         "model": judge_model_name,
         "max_tokens": judge_config["max_tokens"],
         "temperature": judge_config["temperature"],
     }
 
-    if judge_config["judge_prompt_type"] == "comparative_gen":
+    if judge_config["judge_prompt_type"] == "comparative":
         system_prompt = COMPARATIVE_GEN_SYSTEM_PROMPT
         user_prompt_template = COMPARATIVE_GEN_USER_PROMPT
         prompts = [user_prompt_template.format(question=question,answer_1=base_output,answer_2=pred) for question,pred,base_output in zip(questions,preds,baseline_model_outputs)]
@@ -58,7 +80,8 @@ def run_judge(questions,preds,judge_config,baseline_model_outputs=None,images=No
     
     messages = []
     for image,prompt in zip(images,prompts):
-        if image is not None:
+        #TODO: change image format to base64
+        if image is not None or judge_config["text_only"]==False:
             messages.append([
                     {"role": "system", "content": [{"type": "text", "text": system_prompt}]},
                     {"role": "user",
@@ -66,31 +89,70 @@ def run_judge(questions,preds,judge_config,baseline_model_outputs=None,images=No
                     },])
         else:
             messages.append([
-                    {"role": "system", "content": [{"type": "text", "text": system_prompt}]},
-                    {"role": "user", "content": [{"type": "text", "text": prompt}]},
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": prompt}
                 ])
     payload["messages"] = messages
 
     responses = []
-    for attempt in range(judge_config["max_retries"]):
-        try:
-            response = requests.post(api_url, headers=headers, json=payload, timeout=60)
-            response.raise_for_status()
-            response_data = response.json()
-            # print(response_data)
-            responses.append(response_data)
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Request failed on attempt {attempt+1}: {e}")
-            time.sleep(judge_config["wait_time"])
-            if attempt == judge_config["max_retries"] - 1:
-                logger.info(f"Failed to get response after {judge_config['max_retries']} attempts")
-                responses.append(None)
-        except Exception as e:
-            logger.info(f"Error on attempt {attempt+1}: {e}")
-            time.sleep(judge_config["wait_time"])
-            responses.append(None)
-    return response_data
 
+    # for attempt in range(judge_config["max_retries"]):
+    #     try:
+    #         response = requests.post(api_url, headers=headers, json=payload, timeout=60)
+    #         response.raise_for_status()
+    #         import pdb; pdb.set_trace()
+    #         response_data = response.json()
+    #         # print(response_data)
+    #         responses.append(response_data)
+    #         break
+    #     except requests.exceptions.RequestException as e:
+    #         logger.error(f"Request failed on attempt {attempt+1}: {e}")
+    #         time.sleep(judge_config["wait_time"])
+    #         if attempt == judge_config["max_retries"] - 1:
+    #             logger.info(f"Failed to get response after {judge_config['max_retries']} attempts")
+    #             responses.append(None)
+    #     except Exception as e:
+    #         logger.info(f"Error on attempt {attempt+1}: {e}")
+    #         time.sleep(judge_config["wait_time"])
+    #         responses.append(None)
+
+    #Do the api call
+    response = api_call(api_url,headers,payload)
+    return response
+
+def api_call(api_url,headers,payload):
+    try:
+        response = requests.post(api_url, headers=headers, json=payload, timeout=60)
+        response.raise_for_status()  # Raises an HTTPError for bad responses (4xx, 5xx)
+        response_data = response.json()
+        return response_data
+        
+    except requests.exceptions.HTTPError as e:
+        logger.error(f"HTTP error occurred: {e}")
+        logger.error(f"Response status code: {e.response.status_code}")
+        logger.error(f"Response text: {e.response.text}")
+        return None
+        
+    except requests.exceptions.ConnectionError as e:
+        logger.error(f"Error connecting to the server: {e}")
+        return None
+        
+    except requests.exceptions.Timeout as e:
+        logger.error(f"Request timed out: {e}")
+        return None
+        
+    except requests.exceptions.RequestException as e:
+        logger.error(f"An error occurred while making the request: {e}")
+        return None
+        
+    except json.JSONDecodeError as e:
+        logger.error(f"Error decoding JSON response: {e}")
+        logger.error(f"Response text: {response.text}")
+        return None
+        
+    except Exception as e:
+        logger.error(f"An unexpected error occurred: {e}")
+        return None
 
 def process_judge_results(responses):
     import pdb; pdb.set_trace()
@@ -101,7 +163,7 @@ def process_judge_results(responses):
         responses.append(response_data)
     return responses
 
-def load_baselined_outputs(baseline_model_outputs_path):
+def load_baseline_outputs(baseline_model_outputs_path):
     filtered_responses = []
     with open(baseline_model_outputs_path, 'r', encoding='utf-8') as f:
         for line in f:
@@ -135,6 +197,12 @@ def process_docs(docs):
     # logger.info(f"processing docs")
     # Process images in place
     docs = docs.select(range(5)) # filter out some samples!
+    # Create proper copies of images
+    def copy_image_fn(example):
+        example['copy_image'] = example['image'].copy()
+        return example
+    
+    docs = docs.map(copy_image_fn)
     return docs
 
 
@@ -170,10 +238,13 @@ def gen_doc_to_text(doc,lmms_eval_specific_kwargs=None ):
 #     return choices["label"].index(answerKey)
 
 def gen_process_results(doc, results):
-    generated_texts = [res[0] for res in results]
+    generated_texts = results[0]
+    if isinstance(doc['copy_image'][0]['bytes'], bytes):
+        img = Image.open(io.BytesIO(doc['copy_image'][0]['bytes'])).convert('RGB')
+        myimg = img
     return {"results": {
         "id": doc["index"],
-        "image": doc["image"],
+        "image": myimg,
         "question": doc["question"],
         "image_category": doc["image_source_category"],
         "prediction": generated_texts
@@ -186,22 +257,23 @@ def aggregate_results(results):
     images = [result["image"] for result in results]
 
     judge_config = get_judge_config()
+
     logger.info("Checking judge config...")
     if judge_config["run_judge"]:
         logger.info("Judge is enabled, checking judge config...")
         if judge_config["judge_prompt_type"] == "comparative":
             logger.info("Judgement is set to comparative, checking baseline model outputs...")
             try:
-                baseline_model_outputs = load_baselined_outputs(judge_config["baseline_model_outputs_path"])
+                baseline_model_outputs = load_baseline_outputs(judge_config["baseline_model_outputs_path"])
                 assert len(baseline_model_outputs) == len(preds)
+                logger.info("Baseline model outputs loaded successfully.")
+                #TODO: run judge with comparative prompt
+                import pdb; pdb.set_trace()
+                judge_results = run_judge(questions,preds,judge_config,baseline_model_outputs,images)
             except Exception as e:
-                logger.error(f"Failed loading baseline model outputs.")
+                logger.error(f"Failed while loading model outputs or running judge.")
                 raise e
             
-            logger.info("Baseline model outputs loaded successfully.")
-            #TODO: run judge with comparative prompt
-            judge_results = run_judge(questions,preds,judge_config,baseline_model_outputs,images)
-
         elif judge_config["judge_prompt_type"] == "direct assessment":
             preds = [result["prediction"] for result in results]
             #Note: run judge on predicted outputs
