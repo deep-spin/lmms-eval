@@ -99,14 +99,14 @@ class Aya(lmms):
                 eval_logger.info(f"Using single device: {self._device}")
             self._rank = 0
             self._world_size = 1
-
+        self.apply_chat_template = True
     @property
     def config(self):
         return self._config
 
     @property
     def tokenizer(self):
-        return self._tokenizer
+        return self._processor.tokenizer
 
     @property
     def model(self):
@@ -152,6 +152,7 @@ class Aya(lmms):
         return self.tokenizer.decode(tokens)
 
     def loglikelihood(self, requests: List[Instance]) -> List[Tuple[float, bool]]:
+        breakpoint()
         res = []
         pbar = tqdm(total=len(requests), disable=(self.rank != 0), desc="Model Responding")
         for contexts, doc_to_target, doc_to_visual, doc_id, task, split in [reg.args for reg in requests]:
@@ -172,13 +173,14 @@ class Aya(lmms):
             prompts_input = contexts[0] if isinstance(contexts, list) else contexts
 
             # create chat object
-            message = [
-                {"role": "user",
-                 "content": [
-                     {"type": "text", "text": prompts_input
-                      }]}]
-            if image_urls is not None:
-                message[0]["content"] += [{"type": "image", "url": image_url} for image_url in image_urls]
+            message = prompts_input
+
+            #     {"role": "user",
+            #      "content": [
+            #          {"type": "text", "text": prompts_input
+            #           }]}]
+            # if image_urls is not None:
+            #     message[0]["content"] += [{"type": "image", "url": image_url} for image_url in image_urls]
 
             if self.add_system_prompt is not None:
                 message.insert(0, {"role": "system", 

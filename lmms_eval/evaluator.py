@@ -238,6 +238,10 @@ def simple_evaluate(
 
     if evaluation_tracker is not None:
         def get_chat_template(lm):
+            if hasattr(lm._model, "name_or_path"):
+                if "aya" in lm._model.name_or_path :
+                    if hasattr(lm._processor.tokenizer, "chat_template"):
+                        return lm._processor.tokenizer.chat_template["default"]
             if hasattr(lm, "chat_template"):
                 return lm.chat_template
             elif hasattr(lm.tokenizer, "chat_template"):
