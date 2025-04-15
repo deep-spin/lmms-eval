@@ -2,12 +2,11 @@
 # if direct assessment, then the judge will just judge the predicted outputs!
 # to disable the judge, set run_judge to false
 run_judge: true
-judge_model_name: o1-mini-2024-09-12
+api_type: openai #openai #anthropic
+judge_model_name: gpt-4o-mini #gpt-4o-mini #claude-3-7-sonnet-20250219
 judge_prompt_type: comparative
 text_only: true
-baseline_model_outputs_path: /mnt/scratch-artemis/manos/data/tower-vision-eval-outputs/tower-vision/text-only-results-debug/aya-vision-bench-gen-eng/Unbabel__lnext-qwen2p5-7b-siglip2-v5/Unbabel__lnext-qwen2p5-7b-siglip2-v5/20250415_044006_samples_aya-vision-bench-gen-eng.jsonl
+baseline_model_outputs_path: /mnt/scratch-artemis/manos/data/tower-vision-eval-outputs/tower-vision/tower-vision-debug-results/aya-vision-bench-gen-eng/Unbabel__lnext-qwen2p5-7b-siglip2-v5/Unbabel__lnext-qwen2p5-7b-siglip2-v5/20250416_060306_samples_aya-vision-bench-gen-eng.jsonl
 max_tokens: 1024
 temperature: 0
-max_retries: 3
-wait_time: 10
-api_url: https://api.openai.com/v1/chat/completions  #https://api.anthropic.com/v1/messages  for anthropic
+api_url: https://api.openai.com/v1/chat/completions    #https://api.anthropic.com/v1/messages  for anthropic

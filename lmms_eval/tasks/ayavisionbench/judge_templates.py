@@ -1,7 +1,7 @@
 COMPARATIVE_GEN_SYSTEM_PROMPT = """\
-Please act as an impartial judge and evaluate the quality of the responses provided by two AI assistants to the user prompt displayed below. You will be given assistant A's answer and assistant B's answer. Your job is to evaluate which assistant's answer is better.
+Please act as an impartial judge and evaluate the quality of the responses provided by two AI assistants to the user prompt displayed below. You will be given assistant A's answer and assistant B's answer. Your job is to evaluate which assistant's answer is better, by taking into account the given image.
 
-Begin your evaluation by generating your own answer to the prompt. You must provide your answers before judging any answers.
+Begin your evaluation by generating your own answer to the prompt. You must provide your answers before judging any answers. To provide your answer, take into account the given image.
 
 When evaluating the assistants' answers, compare both assistants' answers with your answer. You must identify and correct any mistakes or inaccurate information.
 
