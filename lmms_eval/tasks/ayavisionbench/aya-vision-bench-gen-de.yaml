@@ -3,9 +3,12 @@ dataset_name: deu_Latn
 task: aya-vision-bench-gen-de
 test_split: test
 output_type: generate_until
+process_docs: !function utils.process_docs
 doc_to_visual: !function utils.gen_doc_to_visual
 doc_to_text: !function utils.gen_doc_to_text
 doc_to_target: ""
+process_results: !function utils.gen_process_results
+
 
 generation_kwargs:
   max_new_tokens: 1024
@@ -14,7 +17,9 @@ generation_kwargs:
   num_beams: 1
   do_sample: false
 
-process_results: !function utils.gen_process_results
+metric_list:
+  - metric: results
+    aggregation: !function utils.aggregate_results
 
 
 metadata:
