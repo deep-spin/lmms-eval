@@ -65,7 +65,7 @@ class Llava(lmms):
         tie_weights: bool = True,
         truncate_context=False,  # whether to truncate the context in generation, set it False for LLaVA-1.6
         customized_config=None,  # ends in json
-        system_prompt="<|im_start|>system\nYou are Qwen, created by Alibaba Cloud. You are a helpful assistant.",
+        add_system_prompt="<|im_start|>system\nYou are Qwen, created by Alibaba Cloud. You are a helpful assistant.",
         **kwargs,
     ) -> None:
         super().__init__()
@@ -143,7 +143,7 @@ class Llava(lmms):
             self.model.to(self._device)
             self._rank = 0
             self._world_size = 1
-        self.system_prompt = system_prompt
+        self.system_prompt = add_system_prompt
     @property
     def config(self):
         # return the associated transformers.AutoConfig for the given pretrained model.
