@@ -48,7 +48,7 @@ def process_docs(docs):
     Process documents...
     """
     # logger.info(f"processing docs")
-    # docs = docs.select(range(5)) # filter out some samples!
+    docs = docs.select(range(5)) # filter out some samples!
     def copy_image_fn(example):
         example['copy_image'] = example['image']
         return example
