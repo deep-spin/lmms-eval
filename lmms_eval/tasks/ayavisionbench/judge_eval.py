@@ -53,7 +53,7 @@ def load_aya_vision_bench_data(language):
     }
     dataset = load_dataset("CohereForAI/AyaVisionBench",name=mapping_language_to_dataset_name[language],split="test")
     logger.info(f"Loaded Aya Vision Bench dataset for language: {language}")
-    dataset = dataset.select(range(5))
+    # dataset = dataset.select(range(5))
     # Extract questions and images from the dataset
     questions = [item["question"] for item in dataset]
 
