@@ -57,16 +57,16 @@ def img_bytes_to_url(image_dict: dict) -> str:
         logger.error(f"Error converting image bytes to URL: {str(e)}")
         return None
 
-def get_judge_config():
-    with open(Path(__file__).parent / "eval_judge_template.yaml", "r") as f:
-        raw_data = f.readlines()
-        safe_data = []
-        for i, line in enumerate(raw_data):
-            # remove function definition since yaml load cannot handle it
-            if "!function" not in line:
-                safe_data.append(line)
-        config = yaml.safe_load("".join(safe_data))
-    return config
+# def get_judge_config():
+#     with open(Path(__file__).parent / "eval_judge_template.yaml", "r") as f:
+#         raw_data = f.readlines()
+#         safe_data = []
+#         for i, line in enumerate(raw_data):
+#             # remove function definition since yaml load cannot handle it
+#             if "!function" not in line:
+#                 safe_data.append(line)
+#         config = yaml.safe_load("".join(safe_data))
+#     return config
 
 
 def set_prompts(judge_config,questions,preds,baseline_model_outputs=None):

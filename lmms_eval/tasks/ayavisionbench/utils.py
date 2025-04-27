@@ -7,11 +7,11 @@ from pathlib import Path
 import io
 from copy import deepcopy
 
-from lmms_eval.tasks.ayavisionbench.judge_utils import (
-    get_judge_config,
-    run_judge,
-    compute_results
-)
+# from lmms_eval.tasks.ayavisionbench.judge_utils import (
+#     get_judge_config,
+#     run_judge,
+#     compute_results
+# )
 
 def pil_to_image_dict(pil_img):
     """
