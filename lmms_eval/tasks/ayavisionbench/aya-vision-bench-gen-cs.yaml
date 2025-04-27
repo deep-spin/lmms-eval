@@ -17,9 +17,9 @@ generation_kwargs:
   num_beams: 1
   do_sample: false
 
-metric_list:
-  - metric: results
-    aggregation: !function utils.aggregate_results
+# metric_list:
+#   - metric: results
+#     aggregation: !function utils.aggregate_results
 
 
 metadata:

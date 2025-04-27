@@ -48,7 +48,7 @@ def process_docs(docs):
     Process documents...
     """
     # logger.info(f"processing docs")
-    docs = docs.select(range(5)) # filter out some samples!
+    # docs = docs.select(range(5)) # filter out some samples!
     def copy_image_fn(example):
         example['copy_image'] = example['image']
         return example
@@ -89,42 +89,43 @@ def gen_process_results(doc, results):
         }
     }
 
-def aggregate_results(results):
-    preds = [result["prediction"] for result in results]
-    questions = [result["question"] for result in results]
-    images = [result["image"] for result in results]
-    # Assuming images is a list of PIL Images:
-    images_bytes = [pil_to_image_dict(img) for img in images.copy()]
+# def aggregate_results(results):
+#     # preds = [result["prediction"] for result in results]
+#     # questions = [result["question"] for result in results]
+#     # images = [result["image"] for result in results]
+#     # # Assuming images is a list of PIL Images:
+#     # images_bytes = [pil_to_image_dict(img) for img in images.copy()]
 
-    judge_config = get_judge_config()
+#     # judge_config = get_judge_config()
 
-    if judge_config["run_judge"]:
-        logger.info("Judge is enabled, checking judge config...")
-        if judge_config["judge_prompt_type"] == "comparative":
-            logger.info("Judgement is set to comparative, checking baseline model outputs...")
-            try:
-                baseline_model_outputs = load_baseline_outputs(judge_config["baseline_model_outputs_path"])
-                assert len(baseline_model_outputs) == len(preds)
-                logger.info("Baseline model outputs loaded successfully.")
-                judge_results = run_judge(questions,preds,judge_config,baseline_model_outputs,images_bytes)
-            except Exception as e:
-                logger.error(f"Failed while loading model outputs or running judge.")
-                raise e
+#     # if judge_config["run_judge"]:
+#     #     logger.info("Judge is enabled, checking judge config...")
+#     #     if judge_config["judge_prompt_type"] == "comparative":
+#     #         logger.info("Judgement is set to comparative, checking baseline model outputs...")
+#     #         try:
+#     #             baseline_model_outputs = load_baseline_outputs(judge_config["baseline_model_outputs_path"])
+#     #             assert len(baseline_model_outputs) == len(preds)
+#     #             logger.info("Baseline model outputs loaded successfully.")
+#     #             judge_results = run_judge(questions,preds,judge_config,baseline_model_outputs,images_bytes)
+#     #         except Exception as e:
+#     #             logger.error(f"Failed while loading model outputs or running judge.")
+#     #             raise e
             
-        elif judge_config["judge_prompt_type"] == "direct assessment":
-            preds = [result["prediction"] for result in results]
-            judge_results = run_judge(questions,preds,judge_config,baseline_model_outputs=None,images=images_bytes)
-        else:
-            logger.error(f"Invalid judge prompt type: {judge_config['judge_prompt_type']}.Skipping judge...")
-            judge_results = None
+#     #     elif judge_config["judge_prompt_type"] == "direct assessment":
+#     #         preds = [result["prediction"] for result in results]
+#     #         judge_results = run_judge(questions,preds,judge_config,baseline_model_outputs=None,images=images_bytes)
+#     #     else:
+#     #         logger.error(f"Invalid judge prompt type: {judge_config['judge_prompt_type']}.Skipping judge...")
+#     #         judge_results = None
         
-    else:
-        judge_results = None
-        logger.info("Judge is disabled, skipping judge...")
+#     # else:
+#     #     judge_results = None
+#     #     logger.info("Judge is disabled, skipping judge...")
 
-    if judge_results is None:
-        return {"judge_results": None}
-    else:
-        results = compute_results(judge_results,judge_config)
-        return results
+#     # if judge_results is None:
+#     #     return {"judge_results": None}
+#     # else:
+#     #     results = compute_results(judge_results,judge_config)
+#     #     return results
+#     return {"judge_results": None}
 

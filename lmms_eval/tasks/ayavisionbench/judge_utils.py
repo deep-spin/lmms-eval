@@ -69,68 +69,6 @@ def get_judge_config():
     return config
 
 
-def choose_api(api_url,judge_config):
-    judge_model_name = judge_config["judge_model_name"]
-    if judge_config["api_type"] == "anthropic":
-        api_key = os.getenv('ANTHROPIC_API_KEY')
-        headers = {
-        "x-api-key": api_key,  # Different header for Claude
-        "Content-Type": "application/json",
-        "anthropic-version": "2023-06-01"  # Required for Claude
-    }
-    elif judge_config["api_type"] == "openai":
-        api_key = os.getenv('OPENAI_API_KEY')
-        headers = {
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-        }
-    else:
-        logger.error(f"API type not supported. Please implement it!")
-        raise ValueError(f"Invalid API type: {judge_config['api_type']}")
-
-    payload = {
-        "model": judge_model_name,
-        "max_tokens": judge_config["max_tokens"],
-        "temperature": judge_config["temperature"],
-    }
-    return headers,payload
-
-
-def api_call(api_url,headers,payload):
-    try:
-        response = requests.post(api_url, headers=headers, json=payload, timeout=60)
-        response.raise_for_status()  # Raises an HTTPError for bad responses (4xx, 5xx)
-        response_data = response.json()
-        return response_data
-        
-    except requests.exceptions.HTTPError as e:
-        logger.error(f"HTTP error occurred: {e}")
-        logger.error(f"Response status code: {e.response.status_code}")
-        logger.error(f"Response text: {e.response.text}")
-        return None
-        
-    except requests.exceptions.ConnectionError as e:
-        logger.error(f"Error connecting to the server: {e}")
-        return None
-        
-    except requests.exceptions.Timeout as e:
-        logger.error(f"Request timed out: {e}")
-        return None
-        
-    except requests.exceptions.RequestException as e:
-        logger.error(f"An error occurred while making the request: {e}")
-        return None
-        
-    except json.JSONDecodeError as e:
-        logger.error(f"Error decoding JSON response: {e}")
-        logger.error(f"Response text: {response.text}")
-        return None
-        
-    except Exception as e:
-        logger.error(f"An unexpected error occurred: {e}")
-        return None
-
-
 def set_prompts(judge_config,questions,preds,baseline_model_outputs=None):
     if judge_config["judge_prompt_type"] == "comparative":
         system_prompt = COMPARATIVE_GEN_SYSTEM_PROMPT
@@ -145,72 +83,13 @@ def set_prompts(judge_config,questions,preds,baseline_model_outputs=None):
     return system_prompt, prompts
 
 
-# def run_judge(
-#     questions: List[str],
-#     preds: List[str],
-#     judge_config: Dict,
-#     baseline_model_outputs: Optional[List[str]] = None,
-#     images: Optional[Dict[str, Union[bytes, None]]] = None
-# ) -> List[str]:
-#     """
-#     Run judge evaluation on predictions with optional image inputs.
-    
-#     Args:
-#         questions: List of questions to evaluate
-#         preds: List of predicted outputs to evaluate
-#         judge_config: Configuration dictionary for the judge
-#         baseline_model_outputs: Optional list of baseline outputs to compare against
-#         images: Optional dictionary containing image data with format {'bytes': bytes, 'path': None}
-        
-#     Returns:
-#         List[Dict]: List of parsed responses from the judge
-#     """
-#     logger.info(f"Selected judge type: {judge_config['judge_prompt_type']}")
-#     # # Load environment variables from .env file
-#     load_dotenv()
-    
-#     api_url = judge_config["api_url"]
-
-#     headers,payload = choose_api(api_url,judge_config)
-#     system_prompt, user_prompts = set_prompts(judge_config,questions,preds,baseline_model_outputs)
-    
-#     responses = []
-#     total_items = len(user_prompts)
-#     logger.info(f"Running judge evaluation for {total_items} items...")
-#     # Create progress bar with additional information
-#     with tqdm(total=total_items, 
-#               desc="Running judge evaluation", 
-#               bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]',
-#               ncols=100) as pbar:
-              
-#         for idx, (image, prompt) in enumerate(zip(images, user_prompts)):
-#             if image is not None or judge_config["text_only"]==False:
-#                 message=([
-#                         {"role": "system", "content": [{"type": "text", "text": system_prompt}]},
-#                         {"role": "user", "content": [{"type": "text", "text": prompt},{"type": "image_url", "image_url": {"url":img_bytes_to_url(image)}}]}
-#                         ])
-#             else:
-#                 message=[{"role": "system", "content": system_prompt},{"role": "user", "content": prompt}]
-            
-#             payload["messages"] = message
-
-#             response = api_call(api_url, headers, payload)
-#             responses.append(response)
-            
-#             # Update progress bar with current item
-#             pbar.set_postfix({"Current": f"{idx+1}/{total_items}"})
-#             pbar.update(1)
-    
-#     responses = parse_judge_responses(responses,judge_config)
-#     return responses
-
 
 def run_judge(
     questions: List[str],
     preds: List[str],
     judge_config: Dict,
     baseline_model_outputs: Optional[List[str]] = None,
-    images: Optional[Dict[str, Union[bytes, None]]] = None
+    images: Optional[Dict[str, Union[bytes, None]]] = None,
 ) -> List[str]:
     """
     Run judge evaluation on predictions using LiteLLM.
@@ -232,16 +111,19 @@ def run_judge(
     model = judge_config["judge_model_name"]
     
 
-    
-    if os.getenv("LITELLM_API_KEY"):
-        api_key = os.getenv("LITELLM_API_KEY")
-        # api_url = "https://cmu.litellm.ai"
-    elif os.getenv("ANTHROPIC_API_KEY"):
-        api_key = os.getenv("ANTHROPIC_API_KEY")
-        # api_url = "https://api.anthropic.com/v1/messages"
-    elif os.getenv("OPENAI_API_KEY"):
-        api_key = os.getenv("OPENAI_API_KEY")
-        # api_url = "https://api.openai.com/v1/chat/completions"
+    if judge_config["api_type"] == "openai":
+        if os.getenv("OPENAI_API_KEY"):
+            api_key = os.getenv("OPENAI_API_KEY")
+        else:
+            api_key = judge_config["openai_api_key"]
+    elif judge_config["api_type"] == "anthropic":
+        if os.getenv("ANTHROPIC_API_KEY"):
+            api_key = os.getenv("ANTHROPIC_API_KEY")
+        else:
+            api_key = judge_config["anthropic_api_key"]
+    elif judge_config["api_type"] == "litellm":
+        if os.getenv("LITELLM_API_KEY"):
+            api_key = os.getenv("LITELLM_API_KEY")
     else:
         raise ValueError("No API key found. Please set LITELLM_API_KEY, ANTHROPIC_API_KEY, or OPENAI_API_KEY environment variable or define the api_key in the judge_config")
 
@@ -297,8 +179,6 @@ def run_judge(
             
             pbar.set_postfix({"Current": f"{idx+1}/{total_items}"})
             pbar.update(1)
-    
-    responses = parse_judge_responses(responses, judge_config)
     return responses
 
 def parse_comparative_response(response: str) -> str:
@@ -358,15 +238,15 @@ def compute_results(responses,judge_config):
             else:
                 no_answer += 1
         results = {
-            "a_better_than_b": a_better_than_b/len(responses),
-            "a_significantly_better_than_b": a_significantly_better_than_b/len(responses),
-            "b_better_than_a": b_better_than_a/len(responses),
-            "b_significantly_better_than_a": b_significantly_better_than_a/len(responses),
-            "a_equal_to_b": a_equal_to_b/len(responses),
+            "baseline_better_than_model": a_better_than_b/len(responses),
+            "baseline_significantly_better_than_model": a_significantly_better_than_b/len(responses),
+            "model_better_than_baseline": b_better_than_a/len(responses),
+            "model_significantly_better_than_baseline": b_significantly_better_than_a/len(responses),
+            "model_equal_to_baseline": a_equal_to_b/len(responses),
             "no_answer_matched": no_answer/len(responses)
         }
     elif judge_config["judge_prompt_type"] == "direct_assessment":
         raise NotImplementedError("Direct assessment results computation not implemented yet!")
-    if judge_config["save_judge_parsed_outputs"]:
-        results["judge_parsed_outputs"] = responses
+    else:
+        raise ValueError(f"Invalid judge prompt type: {judge_config['judge_prompt_type']}")
     return results
