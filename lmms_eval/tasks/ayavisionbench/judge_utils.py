@@ -111,19 +111,22 @@ def run_judge(
     model = judge_config["judge_model_name"]
     
 
-    if judge_config["api_type"] == "openai":
-        if os.getenv("OPENAI_API_KEY"):
-            api_key = os.getenv("OPENAI_API_KEY")
-        else:
-            api_key = judge_config["openai_api_key"]
-    elif judge_config["api_type"] == "anthropic":
+
+    if judge_config["api_type"] == "anthropic":
         if os.getenv("ANTHROPIC_API_KEY"):
             api_key = os.getenv("ANTHROPIC_API_KEY")
         else:
-            api_key = judge_config["anthropic_api_key"]
+            raise ValueError("No API key found. Please set ANTHROPIC_API_KEY environment variable or define the api_key in the judge_config")
+    elif judge_config["api_type"] == "openai":
+        if os.getenv("OPENAI_API_KEY"):
+            api_key = os.getenv("OPENAI_API_KEY")
+        else:
+            raise ValueError("No API key found. Please set OPENAI_API_KEY environment variable or define the api_key in the judge_config")
     elif judge_config["api_type"] == "litellm":
         if os.getenv("LITELLM_API_KEY"):
             api_key = os.getenv("LITELLM_API_KEY")
+        else:
+            raise ValueError("No API key found. Please set LITELLM_API_KEY environment variable or define the api_key in the judge_config")
     else:
         raise ValueError("No API key found. Please set LITELLM_API_KEY, ANTHROPIC_API_KEY, or OPENAI_API_KEY environment variable or define the api_key in the judge_config")
 
@@ -169,7 +172,7 @@ def run_judge(
                     temperature=judge_config["temperature"] if "temperature" in judge_config else None,
                     top_p=judge_config["top_p"] if "top_p" in judge_config else None,
                     api_key=api_key,
-                    base_url=judge_config["api_url"] if "api_url" in judge_config else None
+                    base_url=judge_config.get("api_url")
                 )
                 responses.append(response)
                 
