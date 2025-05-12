@@ -79,6 +79,13 @@ def escaped_split(text, sep_char, maxsplit=-1):
 
     return re.split(r"(?<!\\)" + sep_char, text, maxsplit)
 
+## final answer string exraction when using this parsing format
+def extract_final_answer(text):
+    match = re.search(r'Final Answer:\s*(.*)', text)
+    if match:
+        return match.group(1)
+    else:
+        return text
 
 def handle_arg_string(arg):
     if arg.lower() == "true":
