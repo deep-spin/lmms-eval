@@ -249,8 +249,8 @@ class Llava(lmms):
                 conv = copy.deepcopy(conv_templates[self.conv_template])
             else:
                 conv = conv_templates[self.conv_template].copy()
-            if self.system_prompt and conv.system:
-                conv.system = self.system_prompt
+            if self.add_system_prompt and conv.system:
+                conv.system = self.add_system_prompt
             conv.append_message(conv.roles[0], prompts_input)
             conv.append_message(conv.roles[1], None)
             prompt = conv.get_prompt()
@@ -314,6 +314,7 @@ class Llava(lmms):
         chunks = re_ords.get_batched(n=self.batch_size, batch_fn=None)
         num_iters = len(requests) // self.batch_size if len(requests) % self.batch_size == 0 else len(requests) // self.batch_size + 1
         pbar = tqdm(total=num_iters, disable=(self.rank != 0), desc="Model Responding")
+        breakpoint()
         for chunk in chunks:
             contexts, all_gen_kwargs, doc_to_visual, doc_id, task, split = zip(*chunk)
             task = task[0]
@@ -374,12 +375,12 @@ class Llava(lmms):
                 # if conv.system:
                 #     conv.system = self.add_system_prompt
                 if self.add_system_prompt and conv.system:
-                    conv.system = self.system_prompt
+                    conv.system = self.add_system_prompt
                 conv.append_message(conv.roles[0], question)
                 conv.append_message(conv.roles[1], None)
                 prompt_question = conv.get_prompt()
                 question_input.append(prompt_question)
-
+            
             # input_ids = tokenizer_image_token(prompt, self.tokenizer, IMAGE_TOKEN_INDEX, return_tensors="pt").unsqueeze(0).to(self.device)
             # preconfigure gen_kwargs with defaults
             gen_kwargs["image_sizes"] = [flattened_visuals[idx].size for idx in range(len(flattened_visuals))]

@@ -51,7 +51,7 @@ def alm_bench_process_results(doc, results):
     if target == None:
         print(doc["Translated_Answer"])
     match = exact_match(pred, target.strip("."))
-    return {"match": match}
+    return {"exact_match": match}
 
 
 def alm_bench_doc_to_target(doc, model_specific_target_kwargs):
