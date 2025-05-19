@@ -21,9 +21,12 @@ model_specific_target_kwargs:
 lmms_eval_specific_kwargs:
   default:
     prompt_format: "mcq"
-    # pre_prompt: "For the given Multiple Choice Question Answer below, first analyze the question and then answer strictly from one of the options below."
-    pre_prompt: "For the given Multiple Choice Question Answer below, analyze the question and answer strictly from one of the options below. End your answer with 'Final Answer: <your answer>' where <your answer> is strictly the choice only."
+    pre_prompt: "For the given Multiple Choice Question Answer below, first analyze the question and then answer strictly from one of the options below."
     post_prompt: ""
   qwen_vl:
     pre_prompt: ""
     post_prompt: " Answer:"
+  llava_v6:
+    prompt_format: "mcq"
+    pre_prompt: "For the given Multiple Choice Question Answer below, analyze the question and answer strictly from one of the options below. End your answer with 'Final Answer: <your answer>' where <your answer> is strictly the choice only."
+    post_prompt: ""
