@@ -375,7 +375,6 @@ class Llava(lmms):
                     conv.insert(0, {"role": "system", "content": self.add_system_prompt})
                 prompt_question = self._tokenizer.apply_chat_template(conv, tokenize=False, add_generation_prompt=True)
                 question_input.append(prompt_question)
-                
             
             # input_ids = tokenizer_image_token(prompt, self.tokenizer, IMAGE_TOKEN_INDEX, return_tensors="pt").unsqueeze(0).to(self.device)
             # preconfigure gen_kwargs with defaults
