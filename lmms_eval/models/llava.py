@@ -314,7 +314,6 @@ class Llava(lmms):
         chunks = re_ords.get_batched(n=self.batch_size, batch_fn=None)
         num_iters = len(requests) // self.batch_size if len(requests) % self.batch_size == 0 else len(requests) // self.batch_size + 1
         pbar = tqdm(total=num_iters, disable=(self.rank != 0), desc="Model Responding")
-        breakpoint()
         for chunk in chunks:
             contexts, all_gen_kwargs, doc_to_visual, doc_id, task, split = zip(*chunk)
             task = task[0]
@@ -367,19 +366,16 @@ class Llava(lmms):
                     question = image_tokens + "\n" + context
                 else:
                     question = context
-                # This is much safer for llama3, as we now have some object type in it
-                if "llama_3" in self.conv_template:
-                    conv = copy.deepcopy(conv_templates[self.conv_template])
+
+                if isinstance(question, list):
+                    conv = [ {"role": "user", "content": qq} for qq in question ],
                 else:
-                    conv = conv_templates[self.conv_template].copy()
-                # if conv.system:
-                #     conv.system = self.add_system_prompt
-                if self.add_system_prompt and conv.system:
-                    conv.system = self.add_system_prompt
-                conv.append_message(conv.roles[0], question)
-                conv.append_message(conv.roles[1], None)
-                prompt_question = conv.get_prompt()
+                    conv = [{"role": "user", "content": question}]
+                if self.add_system_prompt:
+                    conv.insert(0, {"role": "system", "content": self.add_system_prompt})
+                prompt_question = self._tokenizer.apply_chat_template(conv, tokenize=False, add_generation_prompt=True)
                 question_input.append(prompt_question)
+                
             
             # input_ids = tokenizer_image_token(prompt, self.tokenizer, IMAGE_TOKEN_INDEX, return_tensors="pt").unsqueeze(0).to(self.device)
             # preconfigure gen_kwargs with defaults
