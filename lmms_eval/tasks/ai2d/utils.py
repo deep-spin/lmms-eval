@@ -2,7 +2,7 @@ import re
 
 from lmms_eval.filters.extraction import ExtendedRegexFilter
 from lmms_eval.filters.transformation import MapFilter
-
+from lmms_eval.utils import extract_final_answer
 
 def ai2d_doc_to_text(doc, lmms_eval_specific_kwargs=None):
     question, choices = doc["question"], doc["options"]
@@ -57,22 +57,26 @@ class MultiChoiceRegexFilter(ExtendedRegexFilter):
         # independently (and keep them a list.)
 
         filtered_resps = []
-
         for r, doc in zip(resps, docs):
             # Regex to directly extract the option letter from the model response
-            option_letter_regex = re.compile(r"^\s*([A-Z])\.")
+            """
+            # NOTE: Some models might only return the option letter (e.g., "A"), 
+            # while others might return the option letter followed by a full period (e.g., "A.").
+            """
+            option_letter_regex = re.compile(r"^\s*([A-Z])(\.)*")
 
             # Process each response
             filtered = []
             for resp in r:
                 # Try to match the option letter at the start of the response
-                match = option_letter_regex.match(resp)
+                pred = extract_final_answer(resp)
+                match = option_letter_regex.match(pred)
                 if match:
                     # If a match is found, append the matched letter
                     filtered.append(match.group(1))
                 else:
                     # If no match, return the original response
-                    filtered.append(resp)
+                    filtered.append(pred)
 
             # Assuming we need the first response that matches or the original response
             filtered_resps.append(filtered[0])

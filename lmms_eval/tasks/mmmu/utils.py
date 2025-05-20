@@ -12,6 +12,7 @@ import requests
 import yaml
 from loguru import logger as eval_logger
 from openai import AzureOpenAI, OpenAI
+from lmms_eval.utils import extract_final_answer
 
 from lmms_eval.tasks._task_utils.file_utils import generate_submission_file
 
@@ -394,6 +395,7 @@ def parse_multi_choice_response(response, all_choices, index2ans):
     Return the predicted index e.g., A, B, C, D.
     https://github.com/MMMU-Benchmark/MMMU/blob/51ce7f3e829c16bb44bc5445782686b4c3508794/eval/eval_utils.py#L10
     """
+    response = extract_final_answer(response)
     for char in [",", ".", "!", "?", ";", ":", "'"]:
         response = response.strip(char)
     response = " " + response + " "  # add space to avoid partial match
@@ -518,7 +520,6 @@ def parse_open_response(response):
     Return a list of predicted strings or numbers.
     https://github.com/MMMU-Benchmark/MMMU/blob/51ce7f3e829c16bb44bc5445782686b4c3508794/eval/eval_utils.py#L122
     """
-
     # content = content.strip("\n").strip(".").strip(" ")
     def get_key_subresponses(response):
         key_responses = []
@@ -567,6 +568,7 @@ def parse_open_response(response):
         return key_responses
 
     # pdb.set_trace()
+    response = extract_final_answer(response)
     key_responses = get_key_subresponses(response)
 
     pred_list = key_responses.copy()  # keep the original string response
