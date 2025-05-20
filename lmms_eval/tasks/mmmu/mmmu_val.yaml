@@ -21,6 +21,6 @@ lmms_eval_specific_kwargs:
   llava_v6:
     prompt_type: "format"
     multiple_choice_prompt: "For the given Multiple Choice Question Answer below, analyze the question and answer strictly from one of the options below. End your answer with 'Final Answer: <your answer>' where <your answer> is strictly the option letter from the given choices only."
-    open_ended_prompt: "For the given Question, analyze the question and answer strictly using a single word or phrase. End your answer with 'Final Answer: <your answer>' where <your answer> is strictly the final answer (a single word or phrase) only."
+    open_ended_prompt: "For the given question, analyze the question and answer strictly using a single word or phrase. End your answer with 'Final Answer: <your answer>' where <your answer> is strictly the final answer (a single word or phrase) only."
 
 include: _default_template_yaml
