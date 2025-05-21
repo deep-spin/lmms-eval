@@ -2,6 +2,7 @@ from PIL import Image
 import re
 import sys
 import numpy as np 
+from lmms_eval.utils import extract_final_answer
 
 def exact_match(pred, target):
     if pred == target:
@@ -20,14 +21,14 @@ def split_answer_options(text):
         "korean": "옵션",
         "Chinese (Simplified)": "选项",
         "Spanish": "Opciones",
-        "Italian": "opzioni",
+        "Italian": "Opzioni",
         "Russian": "Варианты",
-        "French": "choix",
+        "French": "choix ",
         "Portuguese": "Opções",
         "German": "Optionen",
     }
     text = text.strip()
-    match = re.match(r"^(.*?)\s*\((?:Options|Opties|옵션|选项|Opciones|opzioni|Варианты|choix |Opções|Optionen):\s*(.*?)\)$", text, re.IGNORECASE)
+    match = re.match(r"^(.*?)\s*\((?:Options|Opties|옵션|선택|선택사항|선택 |选项|Opciones|opzioni|Варианты|choix |Opções|Optionen|Zutaten|Auswahl):\s*(.*?)\)$", text, re.IGNORECASE)
     if match:
         true_answer = match.group(1).strip()
         choices = re.sub("\s*,\s*", "\n", match.group(2))
@@ -45,10 +46,12 @@ def alm_bench_doc_to_text(doc, lmms_eval_specific_kwargs):
 
 
 def alm_bench_process_results(doc, results):
-    pred = results[0]
+    pred = extract_final_answer(results[0])
     target, _ = split_answer_options(doc["Translated_Answer"])
-    match = exact_match(pred, target)
-    return {"results": match}
+    if target == None:
+        print(doc["Translated_Answer"])
+    match = exact_match(pred, target.strip("."))
+    return {"match": match}
 
 
 def alm_bench_doc_to_target(doc, model_specific_target_kwargs):
