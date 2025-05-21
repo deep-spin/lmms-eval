@@ -66,7 +66,7 @@ class LlavaHf(lmms):
         pretrained: str = "llava-hf/llava-1.5-7b-hf",
         revision: str = "main",
         device: str = "cuda",
-        dtype: Optional[Union[str, torch.dtype]] = "auto",
+        dtype: Optional[Union[str, torch.dtype]] = "bfloat16",
         batch_size: int = 1,
         trust_remote_code: Optional[bool] = False,
         attn_implementation: Optional[str] = None,
@@ -74,6 +74,7 @@ class LlavaHf(lmms):
         chat_template: Optional[str] = None,
         use_cache: bool = True,
         max_frames_num: Optional[int] = 32,
+        add_system_prompt: Optional[str] = None,
         **kwargs,
     ) -> None:
         super().__init__()
@@ -136,7 +137,7 @@ class LlavaHf(lmms):
             self._rank = 0
             self._world_size = 1
         self.accelerator = accelerator
-
+        self.add_system_prompt = add_system_prompt
     @property
     def config(self):
         # return the associated transformers.AutoConfig for the given pretrained model.
@@ -286,6 +287,7 @@ class LlavaHf(lmms):
         chunks = re_ords.get_batched(n=self.batch_size, batch_fn=None)
         num_iters = len(requests) // self.batch_size if len(requests) % self.batch_size == 0 else len(requests) // self.batch_size + 1
         pbar = tqdm(total=num_iters, disable=(self.rank != 0), desc="Model Responding")
+        breakpoint()
         for chunk in chunks:
             contexts, all_gen_kwargs, doc_to_visual, doc_id, task, split = zip(*chunk)
             task = task[0]
@@ -327,14 +329,16 @@ class LlavaHf(lmms):
                 context = f"{image_tokens}\n{context}"
             # Apply chat template
             messages = [{"role": "user", "content": context}]
-            if self.chat_template is not None:
-                self.tokenizer.chat_template = self.chat_template
-                text = self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-            elif self.tokenizer.chat_template is not None:
-                text = self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-            else:
-                self.tokenizer.chat_template = VICUNA_CHAT_TEMPLATE
-                text = self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+            if self.add_system_prompt is not None:
+                messages.insert(0,{"role": "system", "content": self.add_system_prompt})
+            # if self.chat_template is not None:
+                # self.tokenizer.chat_template = self.chat_template
+            text = self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+            # elif self.tokenizer.chat_template is not None:
+                # text = self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+            # else:
+                # self.tokenizer.chat_template = VICUNA_CHAT_TEMPLATE
+                # text = self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
 
             if self.accelerator.is_main_process and doc_id[0] % 100 == 0:
                 eval_logger.debug(f"Prompt for doc ID {doc_id[0]}:\n\n{text}\n")

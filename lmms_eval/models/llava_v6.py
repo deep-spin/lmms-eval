@@ -1,86 +1,72 @@
-from lmms_eval.models.llava import Llava
-import torch
-
-torch.backends.cuda.matmul.allow_tf32 = True
-
-
-import copy
+from lmms_eval.models.llava_hf import LlavaHf
 import warnings
-from datetime import timedelta
 from typing import List, Optional, Tuple, Union
 
-from accelerate import Accelerator, DistributedType, InitProcessGroupKwargs
-from accelerate.state import AcceleratorState
-from packaging import version
-from tqdm import tqdm
+import numpy as np
+import PIL
+import torch
+from transformers import (
+    LlavaForConditionalGeneration,
+    LlavaNextForConditionalGeneration,
+)
 
-from lmms_eval import utils
-from lmms_eval.api.instance import Instance
-from lmms_eval.api.model import lmms
 from lmms_eval.api.registry import register_model
-from lmms_eval.utils import stop_sequences_criteria
 
 warnings.filterwarnings("ignore")
 
 from loguru import logger as eval_logger
 
+DEFAULT_IMAGE_TOKEN = "<image>"
+DEFAULT_VIDEO_TOKEN = "<video>"
+
+model_map = {
+    "llava": LlavaForConditionalGeneration,
+    "llava_next": LlavaNextForConditionalGeneration,
+}
+
 try:
-    from llava.constants import DEFAULT_IMAGE_TOKEN, IMAGE_TOKEN_INDEX
-    from llava.conversation import conv_templates
-    from llava.mm_utils import (
-        get_model_name_from_path,
-        process_images,
-        tokenizer_image_token,
-    )
-    from llava.model.builder import load_pretrained_model
+    from transformers import LlavaOnevisionForConditionalGeneration
+
+    model_map["llava_onevision"] = LlavaOnevisionForConditionalGeneration
 except Exception as e:
-    eval_logger.debug("LLaVA is not installed. Please install LLaVA to use this model.\nError: %s" % e)
+    eval_logger.debug("Transformers version does not support llava-onevision. Skipping.")
 
-# inference implementation for attention, can be "sdpa", "eager", "flash_attention_2". Seems FA2 is not effective during inference: https://discuss.huggingface.co/t/flash-attention-has-no-effect-on-inference/73453/5
-# if is_flash_attn_2_available:
-#     best_fit_attn_implementation = "flash_attention_2" # flash_attn has a bug that says: ERROR Error query and key must have the same dtype in generating
-
-if version.parse(torch.__version__) >= version.parse("2.1.2"):
-    best_fit_attn_implementation = "sdpa"
-else:
-    best_fit_attn_implementation = "eager"
 
 
 @register_model("llava_v6")
-class Llava_v6(Llava):
+class Llava_v6(LlavaHf):
     """
     Llava Model
     """
 
     def __init__(
         self,
-        pretrained: str = "liuhaotian/llava-v1.5-7b",
-        truncation: Optional[bool] = True,
-        device: Optional[str] = "cuda:0",
-        batch_size: Optional[Union[int, str]] = 1,
-        model_name=None,
-        attn_implementation=best_fit_attn_implementation,
-        device_map="cuda:0",
-        conv_template="qwen_2",
-        use_cache=True,
-        tie_weights: bool = True,
-        truncate_context=False,  # whether to truncate the context in generation, set it False for LLaVA-1.6
-        customized_config=None,  # ends in json
-        add_system_prompt=None,
+        pretrained: str = "llava-hf/llava-1.5-7b-hf",
+        revision: str = "main",
+        device: str = "cuda",
+        dtype: Optional[Union[str, torch.dtype]] = "bfloat16",
+        batch_size: int = 1,
+        trust_remote_code: Optional[bool] = False,
+        attn_implementation: Optional[str] = None,
+        device_map: str = "",
+        chat_template: Optional[str] = None,
+        use_cache: bool = True,
+        max_frames_num: Optional[int] = 32,
+        add_system_prompt: Optional[str] = None,
         **kwargs,
     ) -> None:
         super().__init__(
-            pretrained=pretrained,
-            truncation=truncation,
-            device=device,
-            batch_size=batch_size,
-            model_name=model_name,
-            attn_implementation=attn_implementation,
-            device_map=device_map,
-            conv_template=conv_template,
-            use_cache=use_cache,
-            tie_weights=tie_weights,
-            truncate_context=truncate_context,
-            customized_config=customized_config,
-            add_system_prompt=add_system_prompt,
-            **kwargs)
+            pretrained = pretrained,
+            revision = revision,
+            device = device,
+            dtype = dtype,
+            batch_size = batch_size,
+            trust_remote_code = trust_remote_code,
+            attn_implementation = attn_implementation,
+            device_map = device_map,
+            chat_template = chat_template,
+            use_cache = use_cache,
+            max_frames_num = max_frames_num,
+            add_system_prompt = add_system_prompt,
+            **kwargs
+            )
