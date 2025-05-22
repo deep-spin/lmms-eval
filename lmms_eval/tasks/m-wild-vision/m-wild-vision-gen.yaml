@@ -1,0 +1,12 @@
+group: m-wild-vision-gen
+task:
+  - m-wild-vision-gen-eng
+  # - m-wild-vision-gen-de
+  # - m-wild-vision-gen-es
+  # - m-wild-vision-gen-fr
+  # - m-wild-vision-gen-it
+  # - m-wild-vision-gen-ko
+  # - m-wild-vision-gen-zh
+  # - m-wild-vision-gen-nl
+  # - m-wild-vision-gen-pt
+  # - m-wild-vision-gen-ru

@@ -1,0 +1,12 @@
+group: aya-vision-bench-gen
+task:
+  - aya-vision-bench-gen-eng
+  # - aya-vision-bench-gen-de
+  # - aya-vision-bench-gen-es
+  # - aya-vision-bench-gen-fr
+  # - aya-vision-bench-gen-it
+  # - aya-vision-bench-gen-ko
+  # - aya-vision-bench-gen-zh
+  # - aya-vision-bench-gen-nl
+  # - aya-vision-bench-gen-pt
+  # - aya-vision-bench-gen-ru
