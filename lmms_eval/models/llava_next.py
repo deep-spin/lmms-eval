@@ -22,13 +22,6 @@ warnings.filterwarnings("ignore")
 
 from loguru import logger as eval_logger
 
-from transformers import (
-    AutoConfig,
-    AutoProcessor,
-    LlavaForConditionalGeneration,
-    LlavaNextForConditionalGeneration,
-)
-
 try:
     from llava.constants import DEFAULT_IMAGE_TOKEN, IMAGE_TOKEN_INDEX
     from llava.conversation import conv_templates
@@ -37,6 +30,7 @@ try:
         process_images,
         tokenizer_image_token,
     )
+    from llava.model.builder import load_pretrained_model
 except Exception as e:
     eval_logger.debug("LLaVA is not installed. Please install LLaVA to use this model.\nError: %s" % e)
 
@@ -50,8 +44,8 @@ else:
     best_fit_attn_implementation = "eager"
 
 
-@register_model("llava")
-class Llava(lmms):
+@register_model("llava_next")
+class LlavaNext(lmms):
     """
     Llava Model
     """
@@ -66,9 +60,6 @@ class Llava(lmms):
         attn_implementation=best_fit_attn_implementation,
         device_map="cuda:0",
         conv_template="qwen_2",
-        revision="main",
-        trust_remote_code: Optional[bool] = False,
-        dtype: Optional[Union[str, torch.dtype]] = "auto",
         use_cache=True,
         tie_weights: bool = True,
         truncate_context=False,  # whether to truncate the context in generation, set it False for LLaVA-1.6
@@ -101,17 +92,14 @@ class Llava(lmms):
             llava_model_args["attn_implementation"] = attn_implementation
         if "use_flash_attention_2" in kwargs:
             llava_model_args["use_flash_attention_2"] = kwargs["use_flash_attention_2"]
-        
+        model_name = model_name if model_name is not None else get_model_name_from_path(pretrained)
         try:
             # Try to load the model with the multimodal argument
-            self._model = LlavaNextForConditionalGeneration.from_pretrained(pretrained, revision=revision, torch_dtype=dtype, device_map=self.device_map, trust_remote_code=trust_remote_code, attn_implementation=attn_implementation)
-            self.pretrained = pretrained
-            self._image_processor = AutoProcessor.from_pretrained(pretrained, revision=revision, trust_remote_code=trust_remote_code)
-            self._image_processor.tokenizer.padding_side = "left"
-            self._tokenizer = self._image_processor.tokenizer
-            self._config = self._model.config
-        except:
-            print("Error loading model with multimodal argument.")
+            self._tokenizer, self._model, self._image_processor, self._max_length = load_pretrained_model(pretrained, None, model_name, device_map=self.device_map, torch_dtype="bfloat16", **llava_model_args)
+        except TypeError:
+            # for older versions of LLaVA that don't have multimodal argument
+            llava_model_args.pop("multimodal", None)
+            self._tokenizer, self._model, self._image_processor, self._max_length = load_pretrained_model(pretrained, None, model_name, device_map=self.device_map, torch_dtype="bfloat16", **llava_model_args)
         self._config = self._model.config
         self.model.eval()
         if tie_weights:
@@ -385,7 +373,7 @@ class Llava(lmms):
                     conv = [{"role": "user", "content": question}]
                 if self.add_system_prompt:
                     conv.insert(0, {"role": "system", "content": self.add_system_prompt})
-                prompt_question = self.tokenizer.apply_chat_template(conv, tokenize=False, add_generation_prompt=True)
+                prompt_question = self._tokenizer.apply_chat_template(conv, tokenize=False, add_generation_prompt=True)
                 question_input.append(prompt_question)
             
             # input_ids = tokenizer_image_token(prompt, self.tokenizer, IMAGE_TOKEN_INDEX, return_tensors="pt").unsqueeze(0).to(self.device)
