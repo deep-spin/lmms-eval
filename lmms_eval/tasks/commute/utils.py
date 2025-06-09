@@ -7,16 +7,6 @@ import copy
 
 from loguru import logger
 
-from lmms_eval.tasks.commute.comet_utils.comet import RefCOMET
-
-
-# def base64_to_bytes(base64_string):
-#     # Remove the header if it exists (e.g., "data:image/jpeg;base64,")
-#     if "base64," in base64_string:
-#         base64_string = base64_string.split("base64,")[1]
-#     # Decode base64 string to bytes
-#     img_bytes = base64.b64decode(base64_string)
-#     return img_bytes
 
 def commute_process_docs(docs):
 

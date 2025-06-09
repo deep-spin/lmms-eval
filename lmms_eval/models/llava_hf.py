@@ -226,13 +226,12 @@ class LlavaHf(lmms):
                 prompt_and_continuation = self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=False)
             formatted_contexts = [prompt]
             formatted_continuation = [prompt_and_continuation]
+            model_inputs_wo_continuation = self._image_processor(text=formatted_contexts, images=visuals, return_tensors="pt").to(self._device, self.model.dtype)
             model_inputs = self._image_processor(text=formatted_continuation, images=visuals, return_tensors="pt").to(self._device, self.model.dtype)
             labels = model_inputs["input_ids"].clone()
-            contxt_id = self._image_processor(text=formatted_contexts, return_tensors="pt")["input_ids"]
-            breakpoint()
-            labels[:, : contxt_id.shape[1]] = -100
-            labels[0, -1:] = -100  # last token is also ignored
-
+            image_context_shape = model_inputs_wo_continuation["input_ids"].shape
+            labels[:, : image_context_shape[1]] = -100
+            # labels[0, -1:] = -100  # last token is also ignored
             if self.accelerator.is_main_process and doc_id % 100 == 0:
                 eval_logger.debug(f"Prompt for doc ID {doc_id}:\n\n{formatted_contexts[0]}\n")
                 eval_logger.debug(f"Prompt and continuation for doc ID {doc_id}:\n\n{formatted_continuation[0]}\n")
@@ -242,8 +241,8 @@ class LlavaHf(lmms):
             loss = outputs["loss"]
             logits = outputs["logits"]
             greedy_tokens = logits.argmax(dim=-1)
-            cont_toks = model_inputs["input_ids"][:, contxt_id.shape[1] :]  # [1, seq]
-            greedy_tokens = greedy_tokens[:, contxt_id.shape[1] : model_inputs["input_ids"].shape[1]]  # [1, seq]
+            cont_toks = model_inputs["input_ids"][:, image_context_shape[1] :]  # [1, seq]
+            greedy_tokens = greedy_tokens[:, image_context_shape[1] : model_inputs["input_ids"].shape[1]]  # [1, seq]
             max_equal = (greedy_tokens == cont_toks).all()
             res.append((float(loss.item()), bool(max_equal)))
             pbar.update(1)
