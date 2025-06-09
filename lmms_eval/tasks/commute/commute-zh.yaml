@@ -13,7 +13,7 @@ doc_to_visual: !function utils.commute_doc_to_visual
 doc_to_text: !function utils.commute_doc_to_text
 process_results: !function utils.commute_process_results
 
-doc_to_target: "answer"
+doc_to_target: !function utils.commute_doc_to_target
 
 output_type: loglikelihood
 # generation_kwargs:
@@ -24,7 +24,7 @@ output_type: loglikelihood
 
 lmms_eval_specific_kwargs:
   default:
-    pre_prompt: "Translate the following source text from English to Chinese:\n{source}"
+    pre_prompt: "Translate the following source text from English to Chinese (Simlified). Only generate the translation without any additional explanation or extra word.\nEnglish: {source}\n\nChinese (Simplified): "
 
 metric_list:
   - metric: results

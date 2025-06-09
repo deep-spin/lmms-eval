@@ -50,9 +50,11 @@ def commute_doc_to_text(doc,lmms_eval_specific_kwargs=None ):
     source_txt = doc["source"]
     pre_prompt = lmms_eval_specific_kwargs["pre_prompt"]
     pre_prompt = pre_prompt.format(source=source_txt)
-    input = pre_prompt+doc["output"]
-    return f"{input}"
+    return f"{pre_prompt}"    
 
+def commute_doc_to_target(doc, model_specific_target_kwargs=None):
+    # The target is the correct translation
+    return doc["output"]
 
 def commute_process_results(doc, results):
     loglikelihood = results[0][0]
