@@ -166,7 +166,7 @@ class Pixtral(lmms):
 
     @property
     def tokenizer(self):
-        return self._tokenizer
+        return self._model.get_tokenizer()
 
     @property
     def model(self):
@@ -264,7 +264,7 @@ class Pixtral(lmms):
             # if "temperature" not in gen_kwargs:
             temperature = 0
 
-            self._sampling_params = SamplingParams(max_tokens=max_new_tokens, temperature=temperature, logprobs=1)
+            self._sampling_params = SamplingParams(max_tokens=max_new_tokens, temperature=temperature, logprobs=1, prompt_logprobs=1)
             # TODO: for now, images and text are passed seperatly to the processor
             assert self.batch_size_per_gpu == 1, "Do not support batch_size_per_gpu > 1 for now"
             context = contexts[0]
@@ -288,7 +288,7 @@ class Pixtral(lmms):
             # create chat object
             message = [
                 {"role": "user",
-                 "content": [{"type": "text", "text": context}] + [{"type": "image_url", "image_url": {"url": image_url}} for image_url in image_urls]
+                 "content": [{"type": "text", "text": context}]
                      }]
             if self.add_system_prompt is not None:
                 message.insert(0, {"role": "system", "content": self.add_system_prompt})
@@ -297,6 +297,7 @@ class Pixtral(lmms):
             
             context_id = self._processor.apply_chat_template(message, padding=True, add_generation_prompt=False, tokenize=True, return_dict=True, return_tensors="pt").to(self._model.device)
             
+            message.insert(1, [{"type": "image_url", "image_url": {"url": image_url}} for image_url in image_urls])
             message.append({"role": "assistant", 
                             "content": [{"type": "text", "text": continuation.strip()}]})
             input = self._processor.apply_chat_template(message, padding=True, add_generation_prompt=False, tokenize=True, return_dict=True, return_tensors="pt").to(self._model.device)            
