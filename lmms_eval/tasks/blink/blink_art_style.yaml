@@ -1,0 +1,3 @@
+include: blink_cot.yaml
+task: blink_art_style
+dataset_path: BLINK-Benchmark/BLINK

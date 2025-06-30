@@ -41,7 +41,7 @@ class Qwen2_5_VL(lmms):
         device_map: Optional[str] = "auto",
         batch_size: Optional[Union[int, str]] = 1,
         use_cache=True,
-        use_flash_attention_2: Optional[bool] = False,
+        use_flash_attention_2: Optional[bool] = True,
         min_pixels: int = 256 * 28 * 28,
         max_pixels: int = 1605632,
         max_num_frames: int = 32,
@@ -81,13 +81,17 @@ class Qwen2_5_VL(lmms):
                 attn_implementation="flash_attention_2",
             ).eval()
         else:
-            self._model = Qwen2_5_VLForConditionalGeneration.from_pretrained(pretrained, torch_dtype="auto", device_map=self.device_map).eval()
-        self.processor = AutoProcessor.from_pretrained(pretrained, max_pixels=max_pixels, min_pixels=min_pixels)
+            self._model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
+                pretrained,
+                torch_dtype=torch.bfloat16,
+                device_map=self.device_map
+            ).eval()
+        #self.processor = AutoProcessor.from_pretrained(pretrained, max_pixels=max_pixels, min_pixels=min_pixels)
         self.max_pixels = max_pixels
         self.min_pixels = min_pixels
         self.max_num_frames = max_num_frames
-        self.processor = AutoProcessor.from_pretrained(pretrained, max_pixels=max_pixels, min_pixels=min_pixels)
-        self._tokenizer = AutoTokenizer.from_pretrained(pretrained)
+        self.processor = AutoProcessor.from_pretrained(pretrained, max_pixels=max_pixels, min_pixels=min_pixels, padding_side='left')
+        self._tokenizer = self.processor.tokenizer
 
         self._config = self.model.config
         self.batch_size_per_gpu = int(batch_size)
@@ -247,8 +251,6 @@ class Qwen2_5_VL(lmms):
             pbar.update(1)
         pbar.close()
         return res
-
-            
     def flatten(self, input):
         new_list = []
         for i in input:
