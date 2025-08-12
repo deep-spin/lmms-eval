@@ -166,7 +166,7 @@ class Pixtral(lmms):
 
     @property
     def tokenizer(self):
-        return self._tokenizer
+        return self._model.get_tokenizer()
 
     @property
     def model(self):
@@ -231,6 +231,99 @@ class Pixtral(lmms):
         base64_image = base64.b64encode(img_bytes).decode('utf-8')
         data_url = f"data:image/jpeg;base64,{base64_image}"
         return data_url
+
+
+
+    def loglikelihood(self, requests: List[Instance]) -> List[str]:
+        res = []
+
+        def batch_requests(requests, batch_size):
+            for i in range(0, len(requests), batch_size):
+                yield [x.arguments for x in requests[i:i + batch_size]]
+
+        chunks = batch_requests(requests, self.batch_size)  
+        
+        num_iters = len(requests) // self.batch_size if len(requests) % self.batch_size == 0 else len(requests) // self.batch_size + 1
+        
+        pbar = tqdm(total=num_iters, disable=(self.rank != 0), desc="Model Responding")
+        breakpoint()
+        for chunk in chunks:
+            contexts, doc_to_target, doc_to_visuals, doc_id, tasks, splits = zip(*chunk)
+            if type(doc_to_target) == str:
+                continuation = doc_to_target
+            
+            
+            visuals = [doc_to_visual(self.task_dict[task][split][ids]) for ids, task, split, doc_to_visual in zip(doc_id, tasks, splits, doc_to_visuals)]
+            
+            # Use the generation kwargs from the first request in the batch
+            # gen_kwargs = all_gen_kwargs[0]
+            breakpoint()
+            # Set default generation parameters if not provided
+            # if "max_new_tokens" not in gen_kwargs:
+            max_new_tokens = 8192
+            # if "temperature" not in gen_kwargs:
+            temperature = 0
+
+            self._sampling_params = SamplingParams(max_tokens=max_new_tokens, temperature=temperature, logprobs=1, prompt_logprobs=1)
+            # TODO: for now, images and text are passed seperatly to the processor
+            assert self.batch_size_per_gpu == 1, "Do not support batch_size_per_gpu > 1 for now"
+            context = contexts[0]
+            visual = visuals[0]
+            
+            # TODO: handle multiple images / understand the `visuals` object
+            if not isinstance(visual, list):
+                visual = [visual]
+
+            # vLLM does not work with bytes, so we need to convert it to a data url
+            image_urls = [self.get_image_url(v) for v in visual]
+            
+            # image_url = self.get_image_url(visual)
+
+            # Pixtral expects inputs in a different format, and doesn't work with <image> tokens added in the middle of the prompt.
+            context = context.replace(DEFAULT_IMAGE_TOKEN, "")
+
+            if self.tag:
+                context = f"{self.tag} " + context
+
+            # create chat object
+            message = [
+                {"role": "user",
+                 "content": [{"type": "text", "text": context}]
+                     }]
+            if self.add_system_prompt is not None:
+                message.insert(0, {"role": "system", "content": self.add_system_prompt})
+            
+            
+            
+            context_id = self._processor.apply_chat_template(message, padding=True, add_generation_prompt=False, tokenize=True, return_dict=True, return_tensors="pt").to(self._model.device)
+            
+            message.insert(1, [{"type": "image_url", "image_url": {"url": image_url}} for image_url in image_urls])
+            message.append({"role": "assistant", 
+                            "content": [{"type": "text", "text": continuation.strip()}]})
+            input = self._processor.apply_chat_template(message, padding=True, add_generation_prompt=False, tokenize=True, return_dict=True, return_tensors="pt").to(self._model.device)            
+            # labels = input["input_ids"].clone()
+            # labels[0, : context_id["input_ids"].shape[1]+2] = -100
+            # labels[0, -1:] = -100  # last token is also ignored
+            
+            
+            
+            
+            
+            try:
+                output = self._model.chat(message, sampling_params=self._sampling_params)
+                len_output_tokens = len(output[0].outputs[0].token_ids)
+                ce_loss = output[0].outputs[0].cumulative_logprob / len_output_tokens
+                result = (ce_loss, False)
+                # result = output[0].outputs[0].text
+            except Exception as e:
+                eval_logger.error(f"Error {e} in generating")
+                exit(1)
+            res.append(result)
+            pbar.update(1)
+        pbar.close()
+        return res
+
+
 
     def generate_until(self, requests: List[Instance]) -> List[str]:
         """Generate text based on the given requests."""

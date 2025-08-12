@@ -30,3 +30,15 @@ lmms_eval_specific_kwargs:
     prompt_format: "mcq"
     pre_prompt: "For the given Multiple Choice Question Answer below, analyze the question and answer strictly from one of the options below. End your answer with 'Final Answer: <your answer>' where <your answer> is strictly the choice only."
     post_prompt: ""
+  aya_v6:
+    prompt_format: "mcq"
+    pre_prompt: "For the given Multiple Choice Question Answer below, analyze the question and answer strictly from one of the options below. End your answer with 'Final Answer: <your answer>' where <your answer> is strictly the choice only."
+    post_prompt: ""
+  llava_next:
+    prompt_format: "mcq"
+    pre_prompt: "For the given Multiple Choice Question Answer below, analyze the question and answer strictly from one of the options below. End your answer with 'Final Answer: <your answer>' where <your answer> is strictly the choice only."
+    post_prompt: ""
+  pixtral_v6:
+    prompt_format: "mcq"
+    pre_prompt: "For the given Multiple Choice Question Answer below, analyze the question and answer strictly from one of the options below. End your answer with 'Final Answer: <your answer>' where <your answer> is strictly the choice only."
+    post_prompt: ""

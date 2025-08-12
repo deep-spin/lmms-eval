@@ -81,7 +81,7 @@ def escaped_split(text, sep_char, maxsplit=-1):
 
 ## final answer string exraction when using this parsing format
 def extract_final_answer(text):
-    match = re.search(r'\nFinal Answer:\s*(.*)', text)
+    match = re.search(r'\n*Final Answer:\s*(.*)', text)
     if match:
         return match.group(1)
     else:

@@ -7,16 +7,6 @@ import copy
 
 from loguru import logger
 
-from lmms_eval.tasks.commute.comet_utils.comet import RefCOMET
-
-
-# def base64_to_bytes(base64_string):
-#     # Remove the header if it exists (e.g., "data:image/jpeg;base64,")
-#     if "base64," in base64_string:
-#         base64_string = base64_string.split("base64,")[1]
-#     # Decode base64 string to bytes
-#     img_bytes = base64.b64decode(base64_string)
-#     return img_bytes
 
 def commute_process_docs(docs):
 
@@ -50,9 +40,11 @@ def commute_doc_to_text(doc,lmms_eval_specific_kwargs=None ):
     source_txt = doc["source"]
     pre_prompt = lmms_eval_specific_kwargs["pre_prompt"]
     pre_prompt = pre_prompt.format(source=source_txt)
-    input = pre_prompt+doc["output"]
-    return f"{input}"
+    return f"{pre_prompt}"    
 
+def commute_doc_to_target(doc, model_specific_target_kwargs=None):
+    # The target is the correct translation
+    return doc["output"]
 
 def commute_process_results(doc, results):
     loglikelihood = results[0][0]

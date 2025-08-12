@@ -47,6 +47,7 @@ def alm_bench_doc_to_text(doc, lmms_eval_specific_kwargs):
 
 def alm_bench_process_results(doc, results):
     pred = extract_final_answer(results[0])
+    pred = re.sub(r" \n [\s\S]*$", "", pred)
     target, _ = split_answer_options(doc["Translated_Answer"])
     if target == None:
         print(doc["Translated_Answer"])

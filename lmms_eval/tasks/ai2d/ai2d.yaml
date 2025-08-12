@@ -30,13 +30,25 @@ lmms_eval_specific_kwargs:
     prompt_format: mcq
     pre_prompt: "For the given Multiple Choice Question Answer below, analyze the question and answer strictly from one of the options below.\n"
     post_prompt: "\nEnd your answer with 'Final Answer: <your answer>' where <your answer> is strictly the option letter from the given choices only."
+  aya_v6: 
+    prompt_format: mcq
+    pre_prompt: "For the given Multiple Choice Question Answer below, analyze the question and answer strictly from one of the options below.\n"
+    post_prompt: "\nEnd your answer with 'Final Answer: <your answer>' where <your answer> is strictly the option letter from the given choices only."
+  llava_next: 
+    prompt_format: mcq
+    pre_prompt: "For the given Multiple Choice Question Answer below, analyze the question and answer strictly from one of the options below.\n"
+    post_prompt: "\nEnd your answer with 'Final Answer: <your answer>' where <your answer> is strictly the option letter from the given choices only."
+  pixtral_v6: 
+    prompt_format: mcq
+    pre_prompt: "For the given Multiple Choice Question Answer below, analyze the question and answer strictly from one of the options below.\n"
+    post_prompt: "\nEnd your answer with 'Final Answer: <your answer>' where <your answer> is strictly the option letter from the given choices only."
 
 model_specific_target_kwargs:
   default: "mcq"
   qwen_vl: "qa"
 
 generation_kwargs:
-  max_new_tokens: 8192
+  max_new_tokens: 2048
   temperature: 0
   do_sample: False
 
