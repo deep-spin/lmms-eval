@@ -3,8 +3,9 @@ dataset_path: MMMU/MMMU_Pro
 dataset_name: "standard (10 options)"
 test_split: test
 output_type: generate_until
+#process_docs: !function utils.process_docs
 doc_to_visual: !function utils.mmmu_pro_doc_to_visual
-doc_to_text: "Write out the multiple-choice question in the image and then solve it. The last line of your response should be of the following format: 'Answer: $LETTER' (without quotes) where LETTER is one of options. Think step by step before answering."
+doc_to_text: "Answer the following multiple choice question. The last line of your response should be of the following format: 'Answer: $LETTER' (without quotes) where LETTER is one of options. Think step by step before answering."
 doc_to_target: "{{answer}}"
 # The return value of process_results will be used by metrics
 process_results: !function utils.mmmu_pro_process_results

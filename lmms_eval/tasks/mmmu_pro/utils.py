@@ -29,7 +29,7 @@ def process_docs(docs):
     """
     # logger.info(f"processing docs")
     # Process images in place
-    docs = docs.select(range(65)) # filter out some samples!
+    docs = docs.select(range(1)) # filter out some samples!
     return docs
 
 def replace_images_tokens(input_string):

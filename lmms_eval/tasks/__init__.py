@@ -404,7 +404,10 @@ class TaskManager:
             ".ipynb_checkpoints",
         ]
         tasks_and_groups = collections.defaultdict()
+        
         for root, dirs, file_list in os.walk(task_dir):
+            if "alm_bench" not in root:
+                continue
             dirs[:] = [d for d in dirs if d not in ignore_dirs]
             for f in file_list:
                 if f.endswith(".yaml"):
@@ -536,7 +539,6 @@ def get_task_dict(
     :return
         Dictionary of task objects
     """
-
     task_name_from_string_dict = {}
     task_name_from_config_dict = {}
     task_name_from_object_dict = {}
@@ -588,3 +590,9 @@ def get_task_dict(
     _check_duplicates(get_subtask_list(final_task_dict))
 
     return final_task_dict
+
+
+if __name__ == "__main__":
+    task_manager = TaskManager()
+    # print(task_manager.list_all_tasks(list_groups=True, list_tags=True, list_subtasks=True))
+    task_manager._get_tasklist("blink")

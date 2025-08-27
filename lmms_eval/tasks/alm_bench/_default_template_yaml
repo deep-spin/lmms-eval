@@ -1,3 +1,4 @@
+tag: "alm_bench"
 dataset_path: sonalsannigrahi/alm-bench-mcq-subset
 task: "alm-bench"
 test_split: test

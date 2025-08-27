@@ -1,0 +1,5 @@
+include: blink.yaml
+task: blink_object_localization
+dataset_name: Object_Localization
+
+process_docs: !function utils.process_docs

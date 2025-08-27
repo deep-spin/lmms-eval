@@ -1,6 +1,6 @@
 include: blink.yaml
-task: blink_art_style
-dataset_name: Art_Style
+task: blink_forensic_detection
+dataset_name: Forensic_Detection
 
 process_docs: !function utils.process_docs
 doc_to_text: !function utils.blink_doc_to_text_with_disclaimer

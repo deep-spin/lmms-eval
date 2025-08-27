@@ -1,0 +1,5 @@
+include: blink.yaml
+task: blink_semantic_correspondence
+dataset_name: Semantic_Correspondence
+
+process_docs: !function utils.process_docs

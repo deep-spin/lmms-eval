@@ -1,0 +1,5 @@
+include: blink.yaml
+task: blink_visual_similarity
+dataset_name: Visual_Similarity
+
+process_docs: !function utils.process_docs

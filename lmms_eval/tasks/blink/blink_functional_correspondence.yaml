@@ -1,0 +1,5 @@
+include: blink.yaml
+task: blink_functional_correspondence
+dataset_name: Functional_Correspondence
+
+process_docs: !function utils.process_docs
