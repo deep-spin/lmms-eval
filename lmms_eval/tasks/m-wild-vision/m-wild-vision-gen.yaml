@@ -10,3 +10,5 @@ task:
   - m-wild-vision-gen-nl
   - m-wild-vision-gen-pt
   - m-wild-vision-gen-ru
+  # - m-wild-vision-gen-cs
+

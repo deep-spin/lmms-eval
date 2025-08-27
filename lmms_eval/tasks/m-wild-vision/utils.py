@@ -6,7 +6,6 @@ import re
 import json
 import os
 from loguru import logger
-import io
 
 def base64_to_bytes(base64_string):
     # Remove the header if it exists (e.g., "data:image/jpeg;base64,")
@@ -16,18 +15,13 @@ def base64_to_bytes(base64_string):
     img_bytes = base64.b64decode(base64_string)
     return img_bytes
 
-
 def process_docs(docs):
     """
     Process documents...
     """
     # logger.info(f"processing docs")
-    # docs = docs.select(range(2)) # filter out some samples!
-    def copy_image_fn(example):
-        example['copy_image'] = example['image']
-        return example
-    
-    docs = docs.map(copy_image_fn)
+    # Process images in place
+    docs = docs.select(range(5)) # filter out some samples!
     return docs
 
 
@@ -63,12 +57,12 @@ def gen_doc_to_text(doc,lmms_eval_specific_kwargs=None ):
 #     return choices["label"].index(answerKey)
 
 def gen_process_results(doc, results):
-    generated_text = results[0]
-    myimg = doc['copy_image'][0]['bytes']
-    pil_img = Image.open(io.BytesIO(myimg))
+
+    generated_text = [res[0] for res in results]
+    
     return {"results": {
         "id": doc["question_id"],
-        "image": pil_img,
+        "image": doc["image"],
         "question": doc["instruction"],
         "language": doc["language"],
         "prediction": generated_text 
