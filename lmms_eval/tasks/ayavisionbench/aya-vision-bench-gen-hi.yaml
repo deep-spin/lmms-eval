@@ -1,6 +1,6 @@
 dataset_path: CohereForAI/AyaVisionBench
-dataset_name: ell_Grek
-task: aya-vision-bench-gen-gr
+dataset_name: hin_Deva
+task: aya-vision-bench-gen-hi
 test_split: test
 output_type: generate_until
 
@@ -28,7 +28,7 @@ metadata:
 
 lmms_eval_specific_kwargs:
   default:
-    pre_prompt: "Answer the given question in Greek."
+    pre_prompt: "Answer the given question in Hindi."
     post_prompt: "Answer:"
 
 

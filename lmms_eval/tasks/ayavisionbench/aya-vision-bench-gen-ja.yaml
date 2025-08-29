@@ -1,6 +1,6 @@
 dataset_path: CohereForAI/AyaVisionBench
-dataset_name: ell_Grek
-task: aya-vision-bench-gen-gr
+dataset_name: jpn_Jpan
+task: aya-vision-bench-gen-ja
 test_split: test
 output_type: generate_until
 
@@ -28,8 +28,8 @@ metadata:
 
 lmms_eval_specific_kwargs:
   default:
-    pre_prompt: "Answer the given question in Greek."
-    post_prompt: "Answer:"
+    pre_prompt: "Answer the given question in Japanese."
+    post_prompt: "Answer:"  
 
 
 

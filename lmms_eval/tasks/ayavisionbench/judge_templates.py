@@ -22,6 +22,41 @@ Example output: "My final verdict is tie: [[A=B]]".\
 
 COMPARATIVE_GEN_USER_PROMPT = """Question:{question}\n\n<|The Start of Assistant A's Answer|>\n{answer_1}\n<|The End of Assistant A's Answer|>\n\n<|The Start of Assistant B's Answer|>\n{answer_2}\n<|The End of Assistant B's Answer|>"""
 
+COMPARATIVE_SYS_PROMPT_NO_GEN = """Please act as an impartial judge and evaluate the quality of the responses (Response (A) and Response (B)) based on the provided instruction and the image content."""
+
+COMPARATIVE_USER_PROMPT_NO_GEN = """\
+Which of the following responses better addresses the given instruction in {language}?
+
+The response should be primarily in {language}.
+The evaluation should prioritize accuracy and correctness.
+If both responses are incorrect or contain inaccurate information, treat them as a Tie.
+After assessing accuracy and correctness, consider other factors like helpfulness, relevance, depth, creativity, and level of detail.
+Do not let the length or order of the responses influence your judgment.
+Ensure your evaluation is objective and free from position bias.
+
+Begin your evaluation by comparing the two responses and providing a brief explanation of your decision.
+
+After your comparison, select one of the following choices as your final decision:
+
+1. Response (A) is significantly better: [[A≫B]]
+
+2. Response (A) is slightly better: [[A>B]]
+
+3. Tie, Response (A) and Response (B) are relatively the same: [[A=B]]
+
+4. Response (B) is slightly better: [[B>A]]
+
+5. Response (B) is significantly better: [[B≫A]]
+
+Instruction: {question}
+Response (A): {completion_a}
+Response (B): {completion_b}
+
+Your response must strictly follow this format:
+Explanation: <concise comparison and explanation in English>
+Final Decision: < [[B≫A]], [[B>A]], [[A≫B]], [[A>B]], [[A=B]] >
+"""
+
 DIRECT_ASSESSMENT_SYSTEM_PROMPT = """\
 You are an impartial judge and will be given an image, a question, and an answer of an AI assistant. Your job is to evaluate the quality of the answer.
 

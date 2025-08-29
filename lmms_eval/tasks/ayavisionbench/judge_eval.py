@@ -25,6 +25,7 @@ def load_args():
     parser.add_argument("--temperature",default=0.0, type=float, required=True,help="the temperature for the judge model.")
     parser.add_argument("--top_p",default=1.0, type=float, required=True,help="the top p for the judge model.")
     parser.add_argument("--tensor_parallel_size",default=1, type=int, required=True,help="the tensor parallel size for the judge model.")
+    parser.add_argument("--api_url",default=None, type=str,help="the api url for the judge model.")
     args = parser.parse_args()
     return args
 
@@ -55,12 +56,12 @@ def load_aya_vision_bench_data(language):
     logger.info(f"Loaded Aya Vision Bench dataset for language: {language}")
     # dataset = dataset.select(range(5))
     # Extract questions and images from the dataset
-    questions = [item["question"] for item in dataset]
+    questions = [item["prompt"] for item in dataset]
 
     images_bytes = []
     questions = []
     for item in dataset:
-        questions.append(item["question"])
+        questions.append(item["prompt"])
         pil_img = item["image"][0]
         images_bytes.append(pil_to_image_dict(pil_img))
     return dataset,questions,images_bytes
@@ -116,6 +117,7 @@ if __name__ == "__main__":
         "temperature": args.temperature,
         "top_p": args.top_p,
         "tensor_parallel_size": args.tensor_parallel_size,
+        "api_url": args.api_url
         # Add any other config keys your run_judge expects
     }
 
@@ -130,7 +132,7 @@ if __name__ == "__main__":
     
     # 7. Compute results
     results = compute_results(parsed_responses, judge_config)
-    breakpoint()
+    logger.info(f"Saving results...")
     # 5. Save results
     if args.save_judge_parsed_outputs:
         with open(os.path.join(args.output_dir, "judge_results_parsed.json"), "w") as f:

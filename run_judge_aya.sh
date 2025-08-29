@@ -3,16 +3,19 @@
 # -------------------------------
 # Activate the Python environment
 # -------------------------------
-env_path=/mnt/data-poseidon/manos/tower-vision-eval/deepspin-lmms-eval/venv-lmms-eval
+env_path=/mnt/data-poseidon/manos/tower-vision-eval/deepspin-lmms-eval/venv-lmms-eval-final
 source $env_path/bin/activate
 
 # -------------------------------
 # Export the API key for OpenAI
 # -------------------------------
 
+
 # -------------------------------
 # Judge and API parameters
 # -------------------------------
+# API_TYPE="litellm"
+# JUDGE_MODEL_NAME="litellm_proxy/neulab/claude-3-7-sonnet-20250219"
 API_TYPE="openai"
 JUDGE_MODEL_NAME="gpt-4o-mini"
 JUDGE_PROMPT_TYPE="comparative"
@@ -21,18 +24,23 @@ MAX_TOKENS=2048
 TEMPERATURE=0.0
 TOP_P=1.0
 TENSOR_PARALLEL_SIZE=1
+# define the api url for the judge model if 
+# API_URL="https://cmu.litellm.ai"
+# API_URL="https://api.openai.com/v1"
 
 # -------------------------------
 # Define language pairs and models
 # -------------------------------
-lps=("eng")  # List of language codes
-models=("Qwen/Qwen2.5-VL-7B-Instruct" )  # List of model names
+# lps=("eng" "de" "fr" "it" "es")  # List of language codes
+lps=("eng")
+models=('mistralai/Pixtral-12B-2409' 'CohereForAI/aya-vision-8b')  # List of model names
+models=('mistralai/Pixtral-12B-2409')  # List of model names
 
 # Baseline model name (must match directory structure)
-BASELINE_MODEL_NAME="Unbabel__lnext-qwen2p5-7b-siglip2-v5"
+BASELINE_MODEL_NAME='utter-project/EuroVLM-9B-Preview' 
 
 # Root directory for all outputs
-OUT_ROOT="/mnt/scratch-artemis/manos/data/tower-vision-eval-outputs/tower-vision/tower-vision-debug-results"
+OUT_ROOT="/mnt/scratch-artemis/manos/data/tower-vision-eval-outputs/tower-vision/aya-vision-bench-gen-final-results/aya-vision-bench-gen/v6"
 
 # -------------------------------
 # Main loop over language pairs
@@ -41,7 +49,8 @@ for lp in "${lps[@]}"; do
     # ------------------------------------------
     # Find the most recent baseline output file
     # ------------------------------------------
-    baseline_dir="$OUT_ROOT/aya-vision-bench-gen-${lp}/${BASELINE_MODEL_NAME}"
+    baseline_model_dir="${BASELINE_MODEL_NAME//\//__}"
+    baseline_dir="$OUT_ROOT/${baseline_model_dir}"
     BASELINE_OUTPUT_PATH=$(ls -1t "$baseline_dir"/*samples_aya-vision-bench-gen-${lp}.jsonl 2>/dev/null | head -n 1)
     if [ -z "$BASELINE_OUTPUT_PATH" ]; then
         echo "No baseline output file found for $BASELINE_MODEL_NAME and $lp in $baseline_dir, skipping language."
@@ -54,11 +63,10 @@ for lp in "${lps[@]}"; do
     for model in "${models[@]}"; do
         # Convert model name to directory-friendly format
         model_dir="${model//\//__}"
-
         # ------------------------------------------
         # Find the most recent model output file
         # ------------------------------------------
-        model_output_dir="$OUT_ROOT/aya-vision-bench-gen-${lp}/${model_dir}"
+        model_output_dir="$OUT_ROOT/${model_dir}"
         MODEL_OUTPUT_PATH=$(ls -1t "$model_output_dir"/*samples_aya-vision-bench-gen-${lp}.jsonl 2>/dev/null | head -n 1)
         if [ -z "$MODEL_OUTPUT_PATH" ]; then
             echo "No model output file found for $model ($model_dir) and $lp in $model_output_dir, skipping."
@@ -73,15 +81,24 @@ for lp in "${lps[@]}"; do
         MODEL_OUTPUT_VERSION="${MODEL_OUTPUT_FILENAME%.jsonl}"
         MODEL_OUTPUT_VERSION_CLEAN="${MODEL_OUTPUT_VERSION%_samples_aya-vision-bench-gen-${lp}}"
 
+        JUDGE_MODEL_NAME_REPLACED="${JUDGE_MODEL_NAME//\//__}"
+        BASELINE_MODEL_NAME_REPLACED="${BASELINE_MODEL_NAME//\//__}"
         # Create the results directory using the version
-        RESULTS_DIR="$OUT_ROOT/aya-vision-bench-gen-${lp}/${model_dir}/${MODEL_OUTPUT_VERSION_CLEAN}_${model_dir}_vs_${BASELINE_MODEL_NAME}_with_${JUDGE_MODEL_NAME}"
-        mkdir -p "$RESULTS_DIR" 
+        RESULTS_DIR="$OUT_ROOT/${model_dir}/${MODEL_OUTPUT_VERSION_CLEAN}_${model_dir}_vs_${BASELINE_MODEL_NAME_REPLACED}_with_${JUDGE_MODEL_NAME_REPLACED}/${lp}"
+        mkdir -p "$RESULTS_DIR"
+        
 
         judge_script_path=/mnt/data-poseidon/manos/tower-vision-eval/deepspin-lmms-eval/lmms-eval/lmms_eval/tasks/ayavisionbench/judge_eval.py
         # ------------------------------------------
         # Run the judge evaluation script
         # ------------------------------------------
         echo "Running for model: $model, language: $lp" 
+
+        # Conditionally add --api_url if API_URL is set and not empty
+        api_url_arg=""
+        if [ ! -z "$API_URL" ]; then
+            api_url_arg="--api_url $API_URL"
+        fi
 
         python $judge_script_path \
             --api_type $API_TYPE \
@@ -98,6 +115,8 @@ for lp in "${lps[@]}"; do
             --max_tokens $MAX_TOKENS \
             --temperature $TEMPERATURE \
             --top_p $TOP_P \
-            --tensor_parallel_size $TENSOR_PARALLEL_SIZE
+            --tensor_parallel_size $TENSOR_PARALLEL_SIZE \
+            $api_url_arg
+
     done
 done

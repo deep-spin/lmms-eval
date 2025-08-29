@@ -17,6 +17,8 @@ import litellm
 from lmms_eval.tasks.ayavisionbench.judge_templates import (
     COMPARATIVE_GEN_USER_PROMPT,
     COMPARATIVE_GEN_SYSTEM_PROMPT,
+    COMPARATIVE_SYS_PROMPT_NO_GEN,
+    COMPARATIVE_USER_PROMPT_NO_GEN,
     DIRECT_ASSESSMENT_SYSTEM_PROMPT,
     DIRECT_ASSESSMENT_USER_PROMPT 
 )
@@ -57,20 +59,10 @@ def img_bytes_to_url(image_dict: dict) -> str:
         logger.error(f"Error converting image bytes to URL: {str(e)}")
         return None
 
-# def get_judge_config():
-#     with open(Path(__file__).parent / "eval_judge_template.yaml", "r") as f:
-#         raw_data = f.readlines()
-#         safe_data = []
-#         for i, line in enumerate(raw_data):
-#             # remove function definition since yaml load cannot handle it
-#             if "!function" not in line:
-#                 safe_data.append(line)
-#         config = yaml.safe_load("".join(safe_data))
-#     return config
 
 
 def set_prompts(judge_config,questions,preds,baseline_model_outputs=None):
-    if judge_config["judge_prompt_type"] == "comparative":
+    if judge_config["judge_prompt_type"] == "comparative_gen":
         system_prompt = COMPARATIVE_GEN_SYSTEM_PROMPT
         user_prompt_template = COMPARATIVE_GEN_USER_PROMPT
         prompts = [user_prompt_template.format(question=question,answer_1=base_output,answer_2=pred) for question,pred,base_output in zip(questions,preds,baseline_model_outputs)]
@@ -78,6 +70,10 @@ def set_prompts(judge_config,questions,preds,baseline_model_outputs=None):
         system_prompt = DIRECT_ASSESSMENT_SYSTEM_PROMPT
         user_prompt_template = DIRECT_ASSESSMENT_USER_PROMPT
         prompts = [user_prompt_template.format(question=question,answer=pred) for question,pred in zip(questions,preds)]
+    elif judge_config["judge_prompt_type"] == "comparative":
+        system_prompt = COMPARATIVE_SYS_PROMPT_NO_GEN
+        user_prompt_template = COMPARATIVE_USER_PROMPT_NO_GEN
+        prompts = [user_prompt_template.format(question=question,answer_1=base_output,answer_2=pred) for question,pred,base_output in zip(questions,preds,baseline_model_outputs)]
     else:
         raise ValueError(f"Invalid judge prompt type: {judge_config['judge_prompt_type']}")
     return system_prompt, prompts
@@ -130,7 +126,6 @@ def run_judge(
     else:
         raise ValueError("No API key found. Please set LITELLM_API_KEY, ANTHROPIC_API_KEY, or OPENAI_API_KEY environment variable or define the api_key in the judge_config")
 
-    
 
     # if judge_config["text_only"] == False:
     #     assert litellm.supports_vision(model=model),f"Selected judge model:{model} does not support vision"
