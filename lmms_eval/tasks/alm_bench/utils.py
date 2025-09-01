@@ -15,25 +15,26 @@ def alm_bench_doc_to_visual(doc):
     return [image]
 
 def split_answer_options(text):
-    option_words = {
-        "english": "Options",
-        "dutch": "Opties",
-        "korean": "옵션",
-        "Chinese (Simplified)": "选项",
-        "Spanish": "Opciones",
-        "Italian": "Opzioni",
-        "Russian": "Варианты",
-        "French": "choix ",
-        "Portuguese": "Opções",
-        "German": "Optionen",
-    }
     text = text.strip()
-    match = re.match(r"^(.*?)\s*\((?:Options|Opties|옵션|선택|선택사항|선택 |选项|Opciones|opzioni|Варианты|choix |Opções|Optionen|Zutaten|Auswahl):\s*(.*?)\)$", text, re.IGNORECASE)
+    match = re.match(
+        r"^(.*?)\s*\((?:Options|Opties|옵션|선택|선택사항|선택 |选项|Opciones|opzioni|Варианты|choix |Opções|Optionen|Zutaten|Auswahl|Vaihtoehdot|Možnosti|Опції|Варіанти|विकल्प|オプション|opcje|Alternativ|Opciók|Opțiuni|Valgmuligheder|Opsjoner|Valmöguleikar|Valkostir|möguleikar|параметри)\s*[:：]\s*(.*?)\)$",
+        text,
+        re.IGNORECASE | re.UNICODE
+    )
     if match:
-        true_answer = match.group(1).strip()
-        choices = re.sub("\s*,\s*", "\n", match.group(2))
+        true_answer = match.group(1).strip(" .。")
+        choices = [opt.strip() for opt in re.split(r"\s*,\s*", match.group(2))]
         return true_answer, choices
-    return None, None
+
+    try:
+        japanese_match = re.match(r"^(.*?)\s*(?:（|\()", text)
+        true_answer = japanese_match.group(1).strip(" .。")
+
+        options_match = re.search(r"(?:オプション|選択肢)\s*[:：]\s*(.+?)(?:）|\))", text)
+        choices = [opt.strip() for opt in options_match.group(1).split("、")]
+        return true_answer, choices        
+    except:
+        return None, None
 
 def alm_bench_doc_to_text(doc, lmms_eval_specific_kwargs):
     question = doc["Translated_Question"]

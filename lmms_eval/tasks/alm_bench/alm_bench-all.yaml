@@ -6,6 +6,19 @@ task:
   - alm-bench-it
   - alm-bench-ko
   - alm-bench-nl
-  - alm-bench-pt
   - alm-bench-ru
   - alm-bench-en
+  - alm-bench-pt
+  # - alm-bench-zh
+  - alm-bench-is
+  - alm-bench-cz
+  - alm-bench-uk
+  - alm-bench-hi
+  - alm-bench-jp
+  - alm-bench-pl
+  - alm-bench-sv
+  - alm-bench-hg
+  - alm-bench-ro
+  - alm-bench-dn
+  - alm-bench-no
+  - alm-bench-fn
