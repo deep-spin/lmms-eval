@@ -50,10 +50,22 @@ def process_docs(docs):
     # logger.info(f"processing docs")
     # docs = docs.select(range(10)) # filter out some samples!
     # docs = docs.select(range(30, 35))
+    def filter_multiple_images(example):
+        # Check if image field contains multiple images
+        # If it's a list with more than 1 image, return False to filter it out
+        if isinstance(example['image'], list) and len(example['image']) > 1:
+            return False
+        return True
+    
     def copy_image_fn(example):
         example['copy_image'] = example['image']
         return example
+    
+    # First filter out samples with multiple images
+    # docs = docs.filter(filter_multiple_images)
+    # Then apply the copy_image function
     docs = docs.map(copy_image_fn)
+    # print(len(docs))
     return docs
 
 
