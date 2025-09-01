@@ -61,7 +61,7 @@ def img_bytes_to_url(image_dict: dict) -> str:
 
 
 
-def set_prompts(judge_config,questions,preds,baseline_model_outputs=None):
+def set_prompts(judge_config,questions,preds,baseline_model_outputs=None,language="en"):
     if judge_config["judge_prompt_type"] == "comparative_gen":
         system_prompt = COMPARATIVE_GEN_SYSTEM_PROMPT
         user_prompt_template = COMPARATIVE_GEN_USER_PROMPT
@@ -73,7 +73,7 @@ def set_prompts(judge_config,questions,preds,baseline_model_outputs=None):
     elif judge_config["judge_prompt_type"] == "comparative":
         system_prompt = COMPARATIVE_SYS_PROMPT_NO_GEN
         user_prompt_template = COMPARATIVE_USER_PROMPT_NO_GEN
-        prompts = [user_prompt_template.format(question=question,answer_1=base_output,answer_2=pred) for question,pred,base_output in zip(questions,preds,baseline_model_outputs)]
+        prompts = [user_prompt_template.format(question=question,completion_a=base_output,completion_b=pred,language=language) for question,pred,base_output in zip(questions,preds,baseline_model_outputs)]
     else:
         raise ValueError(f"Invalid judge prompt type: {judge_config['judge_prompt_type']}")
     return system_prompt, prompts
@@ -86,6 +86,7 @@ def run_judge(
     judge_config: Dict,
     baseline_model_outputs: Optional[List[str]] = None,
     images: Optional[Dict[str, Union[bytes, None]]] = None,
+    language: str = "en",
 ) -> List[str]:
     """
     Run judge evaluation on predictions using LiteLLM.
@@ -131,7 +132,7 @@ def run_judge(
     #     assert litellm.supports_vision(model=model),f"Selected judge model:{model} does not support vision"
 
     # Get prompts
-    system_prompt, user_prompts = set_prompts(judge_config, questions, preds, baseline_model_outputs)
+    system_prompt, user_prompts = set_prompts(judge_config, questions, preds, baseline_model_outputs,language)
     
     responses = []
     total_items = len(user_prompts)

@@ -381,7 +381,15 @@ class LlavaHf(lmms):
             except Exception as e:
                 eval_logger.error(f"Error {e} in generating")
                 outputs = ""
-            text_outputs = self.tokenizer.batch_decode(outputs, skip_special_tokens=True)[0]
+            text_outputs = self.tokenizer.batch_decode(outputs, skip_special_tokens=True)
+            if text_outputs is not None and len(text_outputs) > 0:
+                text_outputs = text_outputs[0]
+            else:
+                text_outputs = "<NO OUTPUT>"
+            # if text_outputs == "<NO OUTPUT>":
+            #     eval_logger.info(f"No output for doc ID {doc_id[0]}")
+            #     eval_logger.info(f"Prompt for doc ID {doc_id[0]}:\n\n{text}\n")
+            #     breakpoint()
             if self.accelerator.is_main_process and doc_id[0] % 100 == 0:
                 eval_logger.debug(f"Generated text for doc ID {doc_id[0]}:\n\n{text_outputs}\n")
 

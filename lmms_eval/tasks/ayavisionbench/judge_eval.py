@@ -123,7 +123,7 @@ if __name__ == "__main__":
 
     # 4. Run judge
     logger.info(f"Running judge for language: {args.lp}")
-    full_responses = run_judge(questions, model_outputs, judge_config, baseline_model_outputs, images_bytes)
+    full_responses = run_judge(questions, model_outputs, judge_config, baseline_model_outputs, images_bytes,args.lp)
     f_resp = [extract_judge_message(resp) for resp in full_responses]
 
     logger.info(f"Judge completed for language: {args.lp}")
