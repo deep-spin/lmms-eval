@@ -16,25 +16,29 @@ def alm_bench_doc_to_visual(doc):
 
 def split_answer_options(text):
     text = text.strip()
-    match = re.match(
-        r"^(.*?)\s*\((?:Options|Opties|옵션|선택|선택사항|선택 |选项|Opciones|opzioni|Варианты|choix |Opções|Optionen|Zutaten|Auswahl|Vaihtoehdot|Možnosti|Опції|Варіанти|विकल्प|オプション|opcje|Alternativ|Opciók|Opțiuni|Valgmuligheder|Opsjoner|Valmöguleikar|Valkostir|möguleikar|параметри)\s*[:：]\s*(.*?)\)$",
-        text,
-        re.IGNORECASE | re.UNICODE
+
+    pattern = (
+        r"^(.*?)\s*"                
+        r"(?:（|\()"                
+        r"(?:Options|Opties|옵션|선택|선택사항|選択肢|選択 |选项|Opciones|opzioni|"
+        r"Варианты|Опції|Варіанти|choix|Opções|Optionen|Zutaten|Auswahl|"
+        r"Vaihtoehdot|Možnosti|विकल्प|オプション|opcje|Alternativ|Opciók|"
+        r"Opțiuni|Valgmuligheder|Opsjoner|Valmöguleikar|Valkostir|möguleikar|параметри)"
+        r"\s*[:：]\s*"              
+        r"(.+?)"                    
+        r"(?:）|\))$"               
     )
-    if match:
-        true_answer = match.group(1).strip(" .。")
-        choices = [opt.strip() for opt in re.split(r"\s*,\s*", match.group(2))]
-        return true_answer, choices
 
-    try:
-        japanese_match = re.match(r"^(.*?)\s*(?:（|\()", text)
-        true_answer = japanese_match.group(1).strip(" .。")
-
-        options_match = re.search(r"(?:オプション|選択肢)\s*[:：]\s*(.+?)(?:）|\))", text)
-        choices = [opt.strip() for opt in options_match.group(1).split("、")]
-        return true_answer, choices        
-    except:
+    match = re.match(pattern, text, re.IGNORECASE | re.UNICODE)
+    if not match:
         return None, None
+
+    true_answer = match.group(1).strip(" .。")
+
+    raw_choices = match.group(2)
+    choices = [opt.strip() for opt in re.split(r"[、,]", raw_choices)]
+
+    return true_answer, choices
 
 def alm_bench_doc_to_text(doc, lmms_eval_specific_kwargs):
     question = doc["Translated_Question"]
