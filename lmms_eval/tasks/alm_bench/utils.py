@@ -14,19 +14,20 @@ def alm_bench_doc_to_visual(doc):
     image = (doc['file_name']).convert('RGB')
     return [image]
 
+
 def split_answer_options(text):
     text = text.strip()
 
     pattern = (
-        r"^(.*?)\s*"                
-        r"(?:（|\()"                
-        r"(?:Options|Opties|옵션|선택|선택사항|選択肢|選択 |选项|Opciones|opzioni|"
+        r"^(.*?)\s*"                # capture the correct answer
+        r"(?:（|\()"                # opening parenthesis (full-width or normal)
+        r"(?:Options|Opties|옵션|선택|선택사항|選択肢|選択 |选项|選項|選購|選配|可选|可選|"
         r"Варианты|Опції|Варіанти|choix|Opções|Optionen|Zutaten|Auswahl|"
         r"Vaihtoehdot|Možnosti|विकल्प|オプション|opcje|Alternativ|Opciók|"
-        r"Opțiuni|Valgmuligheder|Opsjoner|Valmöguleikar|Valkostir|möguleikar|параметри)"
-        r"\s*[:：]\s*"              
-        r"(.+?)"                    
-        r"(?:）|\))$"               
+        r"Opțiuni|Valgmuligheder|Opsjoner|Valmöguleikar|Valkostir|möguleikar|параметри|Kjör)"
+        r"\s*[:：]\s*"              # colon (ASCII or full-width), allow spaces
+        r"(.+?)"                    # the list of options
+        r"(?:）|\))$"               # closing parenthesis (full-width or normal)
     )
 
     match = re.match(pattern, text, re.IGNORECASE | re.UNICODE)
@@ -36,9 +37,10 @@ def split_answer_options(text):
     true_answer = match.group(1).strip(" .。")
 
     raw_choices = match.group(2)
-    choices = [opt.strip() for opt in re.split(r"[、,]", raw_choices)]
+    choices = [opt.strip() for opt in re.split(r"[、，,]", raw_choices)]
 
     return true_answer, choices
+
 
 def alm_bench_doc_to_text(doc, lmms_eval_specific_kwargs):
     question = doc["Translated_Question"]

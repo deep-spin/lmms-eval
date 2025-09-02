@@ -9,7 +9,8 @@ task:
   - alm-bench-ru
   - alm-bench-en
   - alm-bench-pt
-  # - alm-bench-zh
+  - alm-bench-zhs
+  - alm-bench-zht
   - alm-bench-is
   - alm-bench-cz
   - alm-bench-uk

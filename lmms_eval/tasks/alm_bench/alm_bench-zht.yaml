@@ -1,6 +1,6 @@
 dataset_path: sonalsannigrahi/alm-bench-lang-split
-task: "alm-bench-zh"
-test_split: Chinese
+task: "alm-bench-zht"
+test_split: chinese_traditional
 output_type: generate_until
 doc_to_visual: !function utils.alm_bench_doc_to_visual
 doc_to_text: !function utils.alm_bench_doc_to_text
