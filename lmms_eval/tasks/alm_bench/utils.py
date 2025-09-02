@@ -4,6 +4,34 @@ import sys
 import numpy as np 
 from lmms_eval.utils import extract_final_answer
 
+
+def country_map(lang):
+    language_to_country = {
+        "German": "Germany",
+        "Spanish": "Spain",
+        "French": "France",
+        "Italian": "Italy",
+        "Korean": "South Korea",
+        "Dutch": "Netherlands",
+        "Russian": "Russia",
+        "English": "United States",
+        "Portuguese": "Portugal",
+        "Chinese (Simplified)": "China",
+        "Chinese (Traditional)": "Taiwan",
+        "Icelandic": "Iceland",
+        "Czech": "Czech Republic",
+        "Ukrainian": "Ukraine",
+        "Hindi": "India",
+        "Japanese": "Japan",
+        "Polish": "Poland",
+        "Swedish": "Sweden",
+        "Hungarian": "Hungary",
+        "Romanian": "Romania",
+        "Danish": "Denmark",
+        "Norwegian": "Norway",
+        "Finnish": "Finland"
+    }
+    return language_to_country[lang]
 def exact_match(pred, target):
     if pred == target:
         return 1
@@ -44,11 +72,15 @@ def split_answer_options(text):
 
 def alm_bench_doc_to_text(doc, lmms_eval_specific_kwargs):
     question = doc["Translated_Question"]
+    lang = doc["Language"]
+    category = doc["Category"]
+    country = country_map(lang)
     pre_prompt = lmms_eval_specific_kwargs["pre_prompt"]
+    country_specific = f"Provide brief, clear responses in {lang} language. The image represents the {category} in {country}"
     post_prompt = lmms_eval_specific_kwargs["post_prompt"]
     post_prompt = lmms_eval_specific_kwargs["post_prompt"]
     _, choices = split_answer_options(doc["Translated_Answer"])
-    full_prompt = f"{pre_prompt} {question}\n{choices}{post_prompt}"
+    full_prompt = f"{pre_prompt} {country_specific} {question}\n{choices}{post_prompt}"
     return full_prompt
 
 
