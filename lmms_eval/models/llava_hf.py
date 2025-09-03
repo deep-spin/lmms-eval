@@ -379,19 +379,19 @@ class LlavaHf(lmms):
 
                 outputs = outputs[:, inputs["input_ids"].shape[-1] :]
             except Exception as e:
-                eval_logger.error(f"Error {e} in generating")
+                eval_logger.error(f"Error {e} in generating. Setting outputs to empty string.")
                 outputs = ""
             text_outputs = self.tokenizer.batch_decode(outputs, skip_special_tokens=True)
+            # breakpoint()
             if text_outputs is not None and len(text_outputs) > 0:
                 text_outputs = text_outputs[0]
             else:
                 text_outputs = "<NO OUTPUT>"
-            # if text_outputs == "<NO OUTPUT>":
-            #     eval_logger.info(f"No output for doc ID {doc_id[0]}")
-            #     eval_logger.info(f"Prompt for doc ID {doc_id[0]}:\n\n{text}\n")
-            #     breakpoint()
-            if self.accelerator.is_main_process and doc_id[0] % 100 == 0:
-                eval_logger.debug(f"Generated text for doc ID {doc_id[0]}:\n\n{text_outputs}\n")
+            if text_outputs == "<NO OUTPUT>":
+                eval_logger.warning(f"No output for doc ID {doc_id[0]}")
+                # eval_logger.warning(f"Prompt for doc ID {doc_id[0]}:\n\n{text}\n")
+            # if self.accelerator.is_main_process and doc_id[0] % 100 == 0:
+                # eval_logger.debug(f"Generated text for doc ID {doc_id[0]}:\n\n{text_outputs}\n")
 
             res.append(text_outputs)
             self.cache_hook.add_partial("generate_until", (context, gen_kwargs), text_outputs)
