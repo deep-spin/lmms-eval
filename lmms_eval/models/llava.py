@@ -1,4 +1,5 @@
 import torch
+
 torch.backends.cuda.matmul.allow_tf32 = True
 
 
@@ -22,13 +23,6 @@ warnings.filterwarnings("ignore")
 
 from loguru import logger as eval_logger
 
-from transformers import (
-    AutoConfig,
-    AutoProcessor,
-    LlavaForConditionalGeneration,
-    LlavaNextForConditionalGeneration,
-)
-
 try:
     from llava.constants import DEFAULT_IMAGE_TOKEN, IMAGE_TOKEN_INDEX
     from llava.conversation import conv_templates
@@ -37,6 +31,7 @@ try:
         process_images,
         tokenizer_image_token,
     )
+    from llava.model.builder import load_pretrained_model
 except Exception as e:
     eval_logger.debug("LLaVA is not installed. Please install LLaVA to use this model.\nError: %s" % e)
 
@@ -65,12 +60,10 @@ class Llava(lmms):
         model_name=None,
         attn_implementation=best_fit_attn_implementation,
         device_map="cuda:0",
-        conv_template="qwen_2",
-        revision="main",
-        trust_remote_code: Optional[bool] = False,
-        dtype: Optional[Union[str, torch.dtype]] = "auto",
+        conv_template="gemma2_instruct",
         use_cache=True,
         tie_weights: bool = True,
+        dtype: Optional[Union[str, torch.dtype]] = "bfloat16",
         truncate_context=False,  # whether to truncate the context in generation, set it False for LLaVA-1.6
         customized_config=None,  # ends in json
         add_system_prompt=None,
@@ -79,6 +72,11 @@ class Llava(lmms):
         super().__init__()
         # Do not use kwargs for now
         assert kwargs == {}, f"Unexpected kwargs: {kwargs}"
+        # Print the args being passed
+        print("Device: ", device)
+        print("Template: ", conv_template)
+        print("Attn Implementation: ", attn_implementation)
+        print("Device type: ", dtype)
         accelerator_kwargs = InitProcessGroupKwargs(timeout=timedelta(weeks=52))
         accelerator = Accelerator(kwargs_handlers=[accelerator_kwargs])
         self.accelerator = accelerator
@@ -101,17 +99,26 @@ class Llava(lmms):
             llava_model_args["attn_implementation"] = attn_implementation
         if "use_flash_attention_2" in kwargs:
             llava_model_args["use_flash_attention_2"] = kwargs["use_flash_attention_2"]
-        
+        if dtype is not None:
+            llava_model_args["torch_dtype"] = dtype
+            # get the torch dtype
+            self.dtype = getattr(torch, dtype)
+
+        print("Llava model args: ", llava_model_args)
+        model_name = model_name if model_name is not None else get_model_name_from_path(pretrained)
         try:
             # Try to load the model with the multimodal argument
-            self._model = LlavaNextForConditionalGeneration.from_pretrained(pretrained, revision=revision, torch_dtype=dtype, device_map=self.device_map, trust_remote_code=trust_remote_code, attn_implementation=attn_implementation)
-            self.pretrained = pretrained
-            self._image_processor = AutoProcessor.from_pretrained(pretrained, revision=revision, trust_remote_code=trust_remote_code)
-            self._image_processor.tokenizer.padding_side = "left"
-            self._tokenizer = self._image_processor.tokenizer
-            self._config = self._model.config
-        except:
-            print("Error loading model with multimodal argument.")
+            self._tokenizer, self._model, self._image_processor, self._max_length = load_pretrained_model(
+                pretrained,
+                None,
+                model_name,
+                device_map=self.device_map,
+                **llava_model_args
+            )
+        except TypeError:
+            # for older versions of LLaVA that don't have multimodal argument
+            llava_model_args.pop("multimodal", None)
+            self._tokenizer, self._model, self._image_processor, self._max_length = load_pretrained_model(pretrained, None, model_name, device_map=self.device_map, **llava_model_args)
         self._config = self._model.config
         self.model.eval()
         if tie_weights:
@@ -236,9 +243,9 @@ class Llava(lmms):
             if visuals:
                 image = process_images(visuals, self._image_processor, self._config)
                 if type(image) is list:
-                    image = [_image.to(dtype=torch.bfloat16, device=self.device) for _image in image]
+                    image = [_image.to(dtype=self.dtype, device=self.device) for _image in image]
                 else:
-                    image = image.to(dtype=torch.bfloat16, device=self.device)
+                    image = image.to(dtype=self.dtype, device=self.device)
             else:
                 image = None
 
@@ -260,8 +267,8 @@ class Llava(lmms):
                 conv = copy.deepcopy(conv_templates[self.conv_template])
             else:
                 conv = conv_templates[self.conv_template].copy()
-            if self.add_system_prompt and conv.system:
-                conv.system = self.add_system_prompt
+            if self.system_prompt and conv.system:
+                conv.system = self.system_prompt
             conv.append_message(conv.roles[0], prompts_input)
             conv.append_message(conv.roles[1], None)
             prompt = conv.get_prompt()
@@ -325,8 +332,9 @@ class Llava(lmms):
         chunks = re_ords.get_batched(n=self.batch_size, batch_fn=None)
         num_iters = len(requests) // self.batch_size if len(requests) % self.batch_size == 0 else len(requests) // self.batch_size + 1
         pbar = tqdm(total=num_iters, disable=(self.rank != 0), desc="Model Responding")
-        # breakpoint()
-        for chunk in chunks:
+        for e, chunk in enumerate(chunks):
+            if e < 29:
+                continue
             contexts, all_gen_kwargs, doc_to_visual, doc_id, task, split = zip(*chunk)
             task = task[0]
             split = split[0]
@@ -355,9 +363,9 @@ class Llava(lmms):
             if flattened_visuals:
                 image_tensor = process_images(flattened_visuals, self._image_processor, self._config)
                 if type(image_tensor) is list:
-                    image_tensor = [_image.to(dtype=torch.bfloat16, device=self.device) for _image in image_tensor]
+                    image_tensor = [_image.to(dtype=self.dtype, device=self.device) for _image in image_tensor]
                 else:
-                    image_tensor = image_tensor.to(dtype=torch.bfloat16, device=self.device)
+                    image_tensor = image_tensor.to(dtype=self.dtype, device=self.device)
             else:
                 image_tensor = None
 
@@ -378,16 +386,20 @@ class Llava(lmms):
                     question = image_tokens + "\n" + context
                 else:
                     question = context
-
-                if isinstance(question, list):
-                    conv = [ {"role": "user", "content": qq} for qq in question ],
+                # This is much safer for llama3, as we now have some object type in it
+                if "llama_3" in self.conv_template:
+                    conv = copy.deepcopy(conv_templates[self.conv_template])
                 else:
-                    conv = [{"role": "user", "content": question}]
-                if self.add_system_prompt:
-                    conv.insert(0, {"role": "system", "content": self.add_system_prompt})
-                prompt_question = self.tokenizer.apply_chat_template(conv, tokenize=False, add_generation_prompt=True)
+                    conv = conv_templates[self.conv_template].copy()
+                # if conv.system:
+                #     conv.system = self.add_system_prompt
+                if self.add_system_prompt and conv.system:
+                    conv.system = self.system_prompt
+                conv.append_message(conv.roles[0], question)
+                conv.append_message(conv.roles[1], None)
+                prompt_question = conv.get_prompt()
                 question_input.append(prompt_question)
-            
+
             # input_ids = tokenizer_image_token(prompt, self.tokenizer, IMAGE_TOKEN_INDEX, return_tensors="pt").unsqueeze(0).to(self.device)
             # preconfigure gen_kwargs with defaults
             gen_kwargs["image_sizes"] = [flattened_visuals[idx].size for idx in range(len(flattened_visuals))]
@@ -400,6 +412,28 @@ class Llava(lmms):
             if "num_beams" not in gen_kwargs:
                 gen_kwargs["num_beams"] = 1
 
+            visual_tokens = question_input[0].count("<image>")
+            num_images = len(image_tensor)
+
+            if visual_tokens != num_images:
+                # replace "<image>" with nb * images tokens FIXME: -> mess
+                #print("Before: ", question_input[0])
+                question_input[0] = question_input[0].replace("<image>", "")
+                question_input[0] = question_input[0].replace("<start_of_turn>user\n", "")
+                question_input[0] = "<start_of_turn>user\n" + " ".join(["<image>"] * num_images) + "\n" + question_input[0]
+                #print("After: ", question_input[0])
+                #import pdb; pdb.set_trace()
+
+
+            print("num_images", num_images)
+
+            # if num_images >1:
+            #     # print sample
+            #     print("sample:", question_input[0])
+                
+            #continue
+
+            #print("nb images:", len(image_tensor))
             input_ids_list = [tokenizer_image_token(prompt, self.tokenizer, IMAGE_TOKEN_INDEX, return_tensors="pt") for prompt in question_input]
             pad_token_ids = self.tokenizer.pad_token_id if self.tokenizer.pad_token_id is not None else self.tokenizer.eos_token_id
             input_ids = self.pad_sequence(input_ids_list, batch_first=True, padding_value=pad_token_ids).to(self.device)
@@ -420,7 +454,8 @@ class Llava(lmms):
                     max_new_tokens=gen_kwargs["max_new_tokens"],
                     use_cache=self.use_cache,
                 )
-                text_outputs = self.tokenizer.batch_decode(cont, skip_special_tokens=True)
+                text_outputs = self.tokenizer.batch_decode(cont, skip_special_tokens=False)
+                print(text_outputs)
             except Exception as e:
                 raise e
                 eval_logger.error(f"Error {e} in generating")
@@ -444,6 +479,7 @@ class Llava(lmms):
             pbar.update(1)
             # reorder this group of results back to original unsorted form
         res = re_ords.get_original(res)
+
         pbar.close()
         return res
 

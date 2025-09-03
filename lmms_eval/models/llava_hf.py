@@ -66,11 +66,11 @@ class LlavaHf(lmms):
         pretrained: str = "llava-hf/llava-1.5-7b-hf",
         revision: str = "main",
         device: str = "cuda",
-        dtype: Optional[Union[str, torch.dtype]] = "auto",
+        dtype: Optional[Union[str, torch.dtype]] = "bfloat16",
         batch_size: int = 1,
         trust_remote_code: Optional[bool] = False,
         attn_implementation: Optional[str] = None,
-        device_map: str = "",
+        device_map: str = "cuda",
         chat_template: Optional[str] = None,
         use_cache: bool = True,
         max_frames_num: Optional[int] = 32,
@@ -288,7 +288,7 @@ class LlavaHf(lmms):
         chunks = re_ords.get_batched(n=self.batch_size, batch_fn=None)
         num_iters = len(requests) // self.batch_size if len(requests) % self.batch_size == 0 else len(requests) // self.batch_size + 1
         pbar = tqdm(total=num_iters, disable=(self.rank != 0), desc="Model Responding")
-        for chunk in chunks:
+        for e, chunk in enumerate(chunks):
             contexts, all_gen_kwargs, doc_to_visual, doc_id, task, split = zip(*chunk)
             task = task[0]
             split = split[0]
@@ -349,6 +349,25 @@ class LlavaHf(lmms):
                     eval_logger.info(f"Error {e} when loading video : {visuals}")
                     pbar.update(1)
 
+            #import pdb; pdb.set_trace()
+
+            visual_tokens = text.count("<image>")
+            num_images = len(visuals)
+
+            # if visual_tokens > 1 and visual_tokens == num_images:
+            #     print(text)
+            
+            if visual_tokens != num_images:
+                # replace "<image>" with nb * images tokens FIXME: -> mess
+                #print("Before: ", text)
+                text = text.replace("<image>\n", "")
+                text = text.replace("\n<image>", "")
+                text = text.replace("<image>\n", "")
+                text = text.replace("<image>", "")
+                text = text.replace("<start_of_turn>user\n", "<start_of_turn>user\n" + " ".join(["<image>"] * num_images) + "\n")
+                #print("After: ", text)
+                #import pdb; pdb.set_trace()
+
             if task_type == "image":
                 inputs = self._image_processor(images=visuals, text=text, return_tensors="pt").to(self._device, self.model.dtype)
             elif task_type == "video":
@@ -366,8 +385,19 @@ class LlavaHf(lmms):
                 gen_kwargs["num_beams"] = 1
             try:
                 # breakpoint()
-                outputs = self.model.generate(
-                    **inputs,
+                # decode input_ids
+                text = self.tokenizer.decode(inputs["input_ids"][0], skip_special_tokens=False)
+                # check how many <image> we have in the text
+                num_image = text.count("<image>")
+
+
+                #print("prompt: ", text.replace("<image>", "", text.count("<image>") - 1))
+                #print("num_image: ", num_image)
+
+                # if num_image
+
+                # Image features and image tokens do not match
+                outputs = self.model.generate(**inputs,
                     do_sample=True if gen_kwargs["temperature"] > 0 else False,
                     temperature=gen_kwargs["temperature"],
                     top_p=gen_kwargs["top_p"],
@@ -379,13 +409,19 @@ class LlavaHf(lmms):
 
                 outputs = outputs[:, inputs["input_ids"].shape[-1] :]
             except Exception as e:
-                eval_logger.error(f"Error {e} in generating")
+                print(f"Error {e} in generating")
                 outputs = ""
-            text_outputs = self.tokenizer.batch_decode(outputs, skip_special_tokens=True)
-            if text_outputs is not None and len(text_outputs) > 0:
-                text_outputs = text_outputs[0]
+            if outputs != "":
+                text_outputs = self.tokenizer.batch_decode(outputs, skip_special_tokens=False)[0]
             else:
-                text_outputs = "<NO OUTPUT>"
+                text_outputs = ""
+            
+                #import pdb; pdb.set_trace()
+            #print(text_outputs)
+            #if text_outputs is not None and len(text_outputs) > 0:
+            #text_outputs = text_outputs[0]
+            #else:
+            #    text_outputs = "<NO OUTPUT>"
             # if text_outputs == "<NO OUTPUT>":
             #     eval_logger.info(f"No output for doc ID {doc_id[0]}")
             #     eval_logger.info(f"Prompt for doc ID {doc_id[0]}:\n\n{text}\n")
