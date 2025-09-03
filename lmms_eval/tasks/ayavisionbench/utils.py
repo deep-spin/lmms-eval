@@ -24,23 +24,23 @@ def pil_to_image_dict(pil_img):
 
 
 
-def load_baseline_outputs(baseline_model_outputs_path):
-    filtered_responses = []
-    with open(baseline_model_outputs_path, 'r', encoding='utf-8') as f:
-        for line in f:
-            try:
-                data = json.loads(line.strip())
-                if 'filtered_resps' in data:
-                    # Handle both single string and list of strings cases
-                    resps = data['filtered_resps']
-                    if isinstance(resps, list):
-                        filtered_responses.extend(resps)
-                    else:
-                        filtered_responses.append(resps)
-            except json.JSONDecodeError:
-                print(f"Warning: Skipping invalid JSON line")
-                continue
-    return filtered_responses
+# def load_baseline_outputs(baseline_model_outputs_path):
+#     filtered_responses = []
+#     with open(baseline_model_outputs_path, 'r', encoding='utf-8') as f:
+#         for line in f:
+#             try:
+#                 data = json.loads(line.strip())
+#                 if 'filtered_resps' in data:
+#                     # Handle both single string and list of strings cases
+#                     resps = data['filtered_resps']
+#                     if isinstance(resps, list):
+#                         filtered_responses.extend(resps)
+#                     else:
+#                         filtered_responses.append(resps)
+#             except json.JSONDecodeError:
+#                 print(f"Warning: Skipping invalid JSON line")
+#                 continue
+#     return filtered_responses
 
 
 def process_docs(docs):
@@ -48,23 +48,35 @@ def process_docs(docs):
     Process documents...
     """
     # logger.info(f"processing docs")
-    # docs = docs.select(range(5)) # filter out some samples!
+    # docs = docs.select(range(10)) # filter out some samples!
+    # docs = docs.select(range(25, 28))
+    def filter_multiple_images(example):
+        # Check if image field contains multiple images
+        # If it's a list with more than 1 image, return False to filter it out
+        if isinstance(example['image'], list) and len(example['image']) > 1:
+            return False
+        return True
+    
     def copy_image_fn(example):
         example['copy_image'] = example['image']
         return example
     
+    # First filter out samples with multiple images
+    # docs = docs.filter(filter_multiple_images)
+    # Then apply the copy_image function
     docs = docs.map(copy_image_fn)
+    # print(len(docs))
     return docs
 
 
 def gen_doc_to_visual(doc):
-    image = doc['image'][0]
+    image = doc['image']
     image = image.convert('RGB')
     return [image]
 
 
 def gen_doc_to_text(doc,lmms_eval_specific_kwargs=None ):
-    question = doc["question"]
+    question = doc["prompt"]
     if 'pre_prompt' in lmms_eval_specific_kwargs:
         pre_prompt = lmms_eval_specific_kwargs["pre_prompt"]
     else:
@@ -83,7 +95,7 @@ def gen_process_results(doc, results):
     return {"results": {
         "id": doc["index"],
         "image": pil_img,
-        "question": doc["question"],
+        "question": doc["prompt"],
         "image_category": doc["image_source_category"],
         "prediction": generated_texts
         }

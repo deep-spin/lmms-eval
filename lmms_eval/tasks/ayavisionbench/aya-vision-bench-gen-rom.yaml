@@ -1,6 +1,6 @@
 dataset_path: CohereForAI/AyaVisionBench
-dataset_name: por_Latn
-task: aya-vision-bench-gen-pt
+dataset_name: ron_Latn
+task: aya-vision-bench-gen-rom
 test_split: test
 output_type: generate_until
 
