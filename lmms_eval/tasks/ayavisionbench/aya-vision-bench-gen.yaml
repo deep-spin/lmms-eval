@@ -1,11 +1,11 @@
 group: aya-vision-bench-gen
 task:
+  - aya-vision-bench-gen-ko
   - aya-vision-bench-gen-eng
   - aya-vision-bench-gen-de
   - aya-vision-bench-gen-es
   - aya-vision-bench-gen-fr
   - aya-vision-bench-gen-it
-  - aya-vision-bench-gen-ko
   - aya-vision-bench-gen-nl
   - aya-vision-bench-gen-ru
   - aya-vision-bench-gen-pt
@@ -16,6 +16,7 @@ task:
   - aya-vision-bench-gen-ja
   - aya-vision-bench-gen-pl
   - aya-vision-bench-gen-rom
+
   # - aya-vision-bench-gen-gr
   # - aya-vision-bench-gen-ar
   # - aya-vision-bench-gen-tu

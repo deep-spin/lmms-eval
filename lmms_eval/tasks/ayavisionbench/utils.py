@@ -49,7 +49,7 @@ def process_docs(docs):
     """
     # logger.info(f"processing docs")
     # docs = docs.select(range(10)) # filter out some samples!
-    # docs = docs.select(range(30, 35))
+    # docs = docs.select(range(25, 28))
     def filter_multiple_images(example):
         # Check if image field contains multiple images
         # If it's a list with more than 1 image, return False to filter it out

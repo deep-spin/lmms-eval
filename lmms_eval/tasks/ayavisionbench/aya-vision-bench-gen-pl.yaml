@@ -28,7 +28,7 @@ metadata:
 
 lmms_eval_specific_kwargs:
   default:
-    pre_prompt: "Answer the given question in Polish."
+    pre_prompt: "Answer the given question."
     post_prompt: "Answer:"
 
 
