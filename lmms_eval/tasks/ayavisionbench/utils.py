@@ -70,9 +70,14 @@ def process_docs(docs):
 
 
 def gen_doc_to_visual(doc):
-    image = doc['image']
+    # keep below for single image
+    image = doc['image'][0]
     image = image.convert('RGB')
     return [image]
+    #keep below for all images
+    # images = doc['image']
+    # images = [im.convert('RGB') for im in images ]
+    # return images
 
 
 def gen_doc_to_text(doc,lmms_eval_specific_kwargs=None ):
