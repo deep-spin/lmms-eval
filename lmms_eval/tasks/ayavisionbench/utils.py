@@ -62,7 +62,7 @@ def process_docs(docs):
         return example
     
     # First filter out samples with multiple images
-    # docs = docs.filter(filter_multiple_images)
+    docs = docs.filter(filter_multiple_images)
     # Then apply the copy_image function
     docs = docs.map(copy_image_fn)
     # print(len(docs))
