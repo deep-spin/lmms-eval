@@ -49,7 +49,8 @@ def process_docs(docs):
     """
     # logger.info(f"processing docs")
     # docs = docs.select(range(10)) # filter out some samples!
-    # docs = docs.select(range(25, 28))
+    # docs = docs.select(range(32,40 ))
+
     def filter_multiple_images(example):
         # Check if image field contains multiple images
         # If it's a list with more than 1 image, return False to filter it out
@@ -62,7 +63,7 @@ def process_docs(docs):
         return example
     
     # First filter out samples with multiple images
-    docs = docs.filter(filter_multiple_images)
+    # docs = docs.filter(filter_multiple_images)
     # Then apply the copy_image function
     docs = docs.map(copy_image_fn)
     # print(len(docs))
@@ -71,13 +72,13 @@ def process_docs(docs):
 
 def gen_doc_to_visual(doc):
     # keep below for single image
-    image = doc['image'][0]
-    image = image.convert('RGB')
-    return [image]
+    # image = doc['image'][0]
+    # image = image.convert('RGB')
+    # return [image]
     #keep below for all images
-    # images = doc['image']
-    # images = [im.convert('RGB') for im in images ]
-    # return images
+    images = doc['image']
+    images = [im.convert('RGB') for im in images ]
+    return images
 
 
 def gen_doc_to_text(doc,lmms_eval_specific_kwargs=None ):
@@ -95,16 +96,27 @@ def gen_doc_to_text(doc,lmms_eval_specific_kwargs=None ):
 
 def gen_process_results(doc, results):
     generated_texts = results[0]
-    myimg = doc['copy_image'][0]['bytes']
-    pil_img = Image.open(io.BytesIO(myimg))
+    images = []
+    for i in range(len(doc['copy_image'])):
+        myimg = doc['copy_image'][i]['bytes']
+        pil_img = Image.open(io.BytesIO(myimg))
+        images.append(pil_img)
     return {"results": {
         "id": doc["index"],
-        "image": pil_img,
+        "image": images,
         "question": doc["prompt"],
         "image_category": doc["image_source_category"],
         "prediction": generated_texts
         }
     }
+    # return {"results": {
+    #     "id": doc["index"],
+    #     "image": images,
+    #     "question": doc["prompt"],
+    #     "image_category": doc["image_source_category"],
+    #     "prediction": generated_texts
+    #     }
+    # }
 
 # def aggregate_results(results):
 #     # preds = [result["prediction"] for result in results]

@@ -336,8 +336,8 @@ class LlavaHf(lmms):
                 self.tokenizer.chat_template = VICUNA_CHAT_TEMPLATE
                 text = self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
 
-            if self.accelerator.is_main_process and doc_id[0] % 100 == 0:
-                eval_logger.debug(f"Prompt for doc ID {doc_id[0]}:\n\n{text}\n")
+            # if self.accelerator.is_main_process and doc_id[0] % 100 == 0:
+                # eval_logger.debug(f"Prompt for doc ID {doc_id[0]}:\n\n{text}\n")
 
             if task_type == "video":
                 try:
@@ -363,10 +363,10 @@ class LlavaHf(lmms):
             if "num_beams" not in gen_kwargs:
                 gen_kwargs["num_beams"] = 1
             try:
-                cont = self.model.generate(
+                outs = self.model.generate(
                     **inputs,
                     do_sample=True if gen_kwargs["temperature"] > 0 else False,
-                    temperature=gen_kwargs["temperature"],
+                    # temperature=gen_kwargs["temperature"],
                     top_p=gen_kwargs["top_p"],
                     num_beams=gen_kwargs["num_beams"],
                     max_new_tokens=gen_kwargs["max_new_tokens"],
@@ -374,13 +374,21 @@ class LlavaHf(lmms):
                     pad_token_id=self.eot_token_id,
                     eos_token_id=self.eot_token_id,
                 )
-                cont = cont[:, inputs["input_ids"].shape[-1] :]
+                outs = outs[:, inputs["input_ids"].shape[-1] :]
             except Exception as e:
                 eval_logger.error(f"Error {e} in generating")
-                cont = ""
-            text_outputs = self.tokenizer.batch_decode(cont, skip_special_tokens=True)[0]
-            if self.accelerator.is_main_process and doc_id[0] % 100 == 0:
-                eval_logger.debug(f"Generated text for doc ID {doc_id[0]}:\n\n{text_outputs}\n")
+                text_outputs = ""
+            # breakpoint()
+            # text_outputs = self.tokenizer.batch_decode(cont, skip_special_tokens=True)[0]
+            text_outputs = self.tokenizer.batch_decode(outs, skip_special_tokens=True)
+            if text_outputs is not None and len(text_outputs) > 0:
+                text_outputs = text_outputs[0]
+            else:
+                text_outputs = "<NO OUTPUT>"
+            if text_outputs == "<NO OUTPUT>":
+                eval_logger.warning(f"No output for doc ID {doc_id[0]}")
+            # if self.accelerator.is_main_process and doc_id[0] % 100 == 0:
+            #     eval_logger.debug(f"Generated text for doc ID {doc_id[0]}:\n\n{text_outputs}\n")
 
             res.append(text_outputs)
             self.cache_hook.add_partial("generate_until", (context, gen_kwargs), text_outputs)
