@@ -357,17 +357,27 @@ class LlavaHf(lmms):
             # if visual_tokens > 1 and visual_tokens == num_images:
             #     print(text)
             
+            # case 1
+            # if visual_tokens != num_images:
+            #     # replace "<image>" with nb * images tokens FIXME: -> mess
+            #     text = text.replace("<image>\n", "")
+            #     text = text.replace("\n<image>", "")
+            #     text = text.replace("<image>\n", "")
+            #     text = text.replace("<image>", "")
+            #     text = text.replace("<start_of_turn>user\n", "<start_of_turn>user\n" + " ".join(["<image>"] * num_images) + "\n")
+            #     #print("After: ", text)
+            #     #import pdb; pdb.set_trace()
+            
+            # case 2
             if visual_tokens != num_images:
-                # replace "<image>" with nb * images tokens FIXME: -> mess
-                #print("Before: ", text)
-                text = text.replace("<image>\n", "")
-                text = text.replace("\n<image>", "")
-                text = text.replace("<image>\n", "")
-                text = text.replace("<image>", "")
-                text = text.replace("<start_of_turn>user\n", "<start_of_turn>user\n" + " ".join(["<image>"] * num_images) + "\n")
-                #print("After: ", text)
+                print("Before: ", text)
+                text = text.replace("<image>", "", visual_tokens-1)
+                text = text.replace("<image>", "<image>" + "".join([" <image>"] * (num_images - 1)))
+                #text = "<start_of_turn>user\n" + " ".join(["<image>"] * num_images) + "\n" + text
+                print("After: ", text)
                 #import pdb; pdb.set_trace()
 
+            
             if task_type == "image":
                 inputs = self._image_processor(images=visuals, text=text, return_tensors="pt").to(self._device, self.model.dtype)
             elif task_type == "video":
