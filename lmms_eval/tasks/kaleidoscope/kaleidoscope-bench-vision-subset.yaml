@@ -1,0 +1,13 @@
+group: kaleidoscope-bench-vision-subset
+task:
+  - kaleidoscope-bench-vision-subset-eng
+  - kaleidoscope-bench-vision-subset-fr
+  - kaleidoscope-bench-vision-subset-de
+  - kaleidoscope-bench-vision-subset-es
+  - kaleidoscope-bench-vision-subset-nl
+  - kaleidoscope-bench-vision-subset-hi
+  - kaleidoscope-bench-vision-subset-pt
+  - kaleidoscope-bench-vision-subset-ru
+  - kaleidoscope-bench-vision-subset-uk
+
+  # - kaleidoscope-bench-vision-subset-te

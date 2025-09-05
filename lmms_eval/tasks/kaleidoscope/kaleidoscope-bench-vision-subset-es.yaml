@@ -1,0 +1,25 @@
+dataset_path: manzar/kaleidoscope-bench-vision-subset
+dataset_name: es
+task: kaleidoscope-bench-vision-subset-es
+test_split: test
+output_type: generate_until
+
+process_docs: !function utils.process_docs
+doc_to_visual: !function utils.doc_to_visual
+doc_to_text: !function utils.doc_to_text
+doc_to_target: !function utils.doc_to_target
+process_results: !function utils.process_results
+
+
+generation_kwargs:
+  max_new_tokens: 1024
+  temperature: 0.0
+  do_sample: false
+
+metadata:
+  - version: 0.0
+
+lmms_eval_specific_kwargs:
+  default:
+    pre_prompt: "For the given Multiple Choice Question Answer below, analyze the question and answer strictly from one of the options below. End your answer with 'Final Answer: <your answer>' where <your answer> is strictly the choice letteronly."
+    post_prompt: ""

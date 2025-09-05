@@ -1,0 +1,13 @@
+group: kaleidoscope-bench-text-only-subset
+task:
+  - kaleidoscope-bench-text-only-eng
+  - kaleidoscope-bench-text-only-fr
+  - kaleidoscope-bench-text-only-de
+  - kaleidoscope-bench-text-only-es
+  - kaleidoscope-bench-text-only-nl
+  - kaleidoscope-bench-text-only-hi
+  - kaleidoscope-bench-text-only-pt
+  - kaleidoscope-bench-text-only-ru
+  - kaleidoscope-bench-text-only-uk
+
+  # - kaleidoscope-bench-text-only-subset-te

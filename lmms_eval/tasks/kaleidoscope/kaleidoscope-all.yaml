@@ -1,0 +1,4 @@
+group: kaleidoscope-all
+task:
+  - kaleidoscope-bench-text-only-subset
+  - kaleidoscope-bench-vision-subset
