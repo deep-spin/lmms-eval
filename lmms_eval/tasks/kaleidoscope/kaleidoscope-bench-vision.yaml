@@ -1,4 +1,4 @@
-group: kaleidoscope-bench-vision-subset
+group: kaleidoscope-bench-vision
 task:
   - kaleidoscope-bench-vision-subset-eng
   - kaleidoscope-bench-vision-subset-fr

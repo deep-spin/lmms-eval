@@ -1,4 +1,4 @@
-group: kaleidoscope-bench-text-only-subset
+group: kaleidoscope-bench-text
 task:
   - kaleidoscope-bench-text-only-eng
   - kaleidoscope-bench-text-only-fr
