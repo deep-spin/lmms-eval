@@ -5,15 +5,14 @@ output_type: generate_until
 doc_to_visual: !function utils.alm_bench_doc_to_visual
 doc_to_text: !function utils.alm_bench_doc_to_text
 doc_to_target: !function utils.alm_bench_doc_to_target
-process_results: !function utils.alm_bench_process_results
+
+process_results: !function utils.process_results
+process_docs: !function utils.process_docs
 generation_kwargs:
   max_new_tokens: 1024
   temperature: 0
   do_sample: False
-metric_list:
-  - metric: match
-    aggregation: mean
-    higher_is_better: true
+
 metadata:
   - version: 0.0
 model_specific_target_kwargs:
@@ -21,7 +20,7 @@ model_specific_target_kwargs:
 lmms_eval_specific_kwargs:
   default:
     prompt_format: "mcq"
-    pre_prompt: "For the given Multiple Choice Question Answer below, analyze the question and answer strictly from one of the options below. End your answer with 'Final Answer: <your answer>' where <your answer> is strictly the choice only."
+    pre_prompt: "For the given Multiple Choice Question Answer below, analyze the question and answer strictly from one of the options below. End your answer with 'Final Answer: <your answer>' where <your answer> is strictly the choice letter only."
     post_prompt: ""
   qwen_vl:
     pre_prompt: ""
