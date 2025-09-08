@@ -22,5 +22,5 @@ metadata:
 
 lmms_eval_specific_kwargs:
   default:
-    pre_prompt: "For the given Multiple Choice Question Answer below, analyze the question and answer strictly from one of the options below. End your answer with 'Final Answer: <your answer>' where <your answer> is strictly the choice letteronly."
+    pre_prompt: "For the given Multiple Choice Question Answer below, analyze the question and answer strictly from one of the options below. End your answer with 'Final Answer: <your answer>' where <your answer> is strictly the choice letter only."
     post_prompt: ""
