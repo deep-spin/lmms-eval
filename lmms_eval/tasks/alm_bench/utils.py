@@ -44,7 +44,11 @@ def alm_bench_doc_to_visual(doc):
     return [image]
 
 def process_docs(docs):
-    docs = docs.select(range(10))
+    # docs = docs.select(range(10))
+    for doc in docs:
+        true_answer, choices = split_answer_options(doc["Translated_Answer"])
+        if true_answer == None or choices == None:
+            logger.warning(f"Error encountered while splitting answer options in dataset. Doc sample: {doc}")
     return docs
 
 # def split_answer_options(text):
@@ -82,11 +86,12 @@ def split_answer_options(text):
         r"(?:（|\()"                # opening parenthesis (full-width or normal)
         r"(?:Options|Opties|옵션|선택|선택사항|選択肢|選択 |选项|選項|選購|選配|可选|可選|"
         r"Варианты|Опції|Варіанти|choix|Opções|Optionen|Zutaten|Auswahl|"
-        r"Vaihtoehdot|Možnosti|विकल्प|オプション|opcje|Alternativ|Opciók|"
-        r"Opțiuni|Valgmuligheder|Opsjoner|Valmöguleikar|Valkostir|möguleikar|параметри|Kjör)"
+        r"Vaihtoehdot|Možnosti|विकल्प|オプション|opcje|Alternativ|Alternativer|Opciók|Muligheder|Indstillinger|muligheder|Mulighed|Lehetőségek|"
+        r"Opțiuni|Valgmuligheder|Opsjoner|Valmöguleikar|Valkostir|möguleikar|параметри|Kjör|opzioni|Opzioni|Opciones|opciones|Volby|volby|Варіанти|варианти|Optioner|optioner)"
         r"\s*[:：]\s*"              # colon (ASCII or full-width), allow spaces
         r"(.+?)"                    # the list of options
-        r"(?:）|\))$"               # closing parenthesis (full-width or normal)
+        r"(?:）|\))\s*[.。]?$"      # closing parenthesis and allow for a period or a dot
+        # r"(?:）|\))$"               # closing parenthesis (full-width or normal)
     )
 
     match = re.match(pattern, text, re.IGNORECASE | re.UNICODE)
@@ -96,11 +101,17 @@ def split_answer_options(text):
     true_answer = match.group(1).strip(" .。")
     raw_choices = match.group(2).strip()
 
-    # If raw choices contain commas followed by capitals, split there
-    if re.search(r"[、，,]\s*[A-Z]", raw_choices):
-        choices = [opt.strip() for opt in re.split(r"[、，,](?=\s*[A-Z])", raw_choices)]
+    # # If raw choices contain commas followed by capitals, split there
+    # if re.search(r"[、，,]\s*[A-Z]", raw_choices):
+    #     choices = [opt.strip() for opt in re.split(r"[、，,](?=\s*[A-Z])", raw_choices)]
+    # else:
+    #     choices = [raw_choices]
+
+    # Split on commas before a capital letter (Latin or Cyrillic)
+    if re.search(r"[、，,]\s*[A-ZА-ЯЇЄІ]", raw_choices):
+        choices = [opt.strip() for opt in re.split(r"[、，,](?=\s*[A-ZА-ЯЇЄІ])", raw_choices)]
     else:
-        choices = [raw_choices]
+        choices = [opt.strip() for opt in re.split(r"[、，,]", raw_choices)]
     return true_answer, choices
 
 def index_to_option(n: int) -> str:
@@ -132,6 +143,8 @@ def alm_bench_doc_to_text(doc, lmms_eval_specific_kwargs):
     post_prompt = lmms_eval_specific_kwargs["post_prompt"]
     post_prompt = lmms_eval_specific_kwargs["post_prompt"]
     true_answer, choices = split_answer_options(doc["Translated_Answer"])
+    if true_answer == None or choices == None:
+        logger.warning(f"Error encountered while splitting answer options in dataset. Doc sample: {doc}")
     choices = "\n".join([f"{index_to_option(i)}) {choice}" for i, choice in enumerate(choices)])
     full_prompt = f"{pre_prompt} {country_specific} {question}\n{choices}{post_prompt}"
     return full_prompt
@@ -169,9 +182,10 @@ def transform_target_text_to_letter(target, choices):
 
 def alm_bench_doc_to_target(doc, model_specific_target_kwargs):
     true_answer, choices  = split_answer_options(doc["Translated_Answer"])
+    if true_answer == None or choices == None:
+        logger.warning(f"Error encountered while splitting answer options in dataset. Doc sample: {doc}")
+        breakpoint()
     target_letter = transform_target_text_to_letter(true_answer, choices)
-    if target_letter == None:
-        logger.warning(f"Invalid answer in dataset. Doc sample: {doc}")
     return target_letter
 
 def process_results(doc, results):
