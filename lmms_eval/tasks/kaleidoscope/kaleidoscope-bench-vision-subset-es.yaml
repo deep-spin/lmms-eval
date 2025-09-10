@@ -16,6 +16,11 @@ generation_kwargs:
   temperature: 0.0
   do_sample: false
 
+metric_list:
+  - metric: accuracy # The name of the metric to use for evaluation. The process_results function should return the metric name and the metric value, in format of `{metric_name: results}`. And the aggregation function will use the results to get the final score.
+    aggregation: mean # The name of the aggregation function to use for evaluation.
+    higher_is_better: true # 
+
 metadata:
   - version: 0.0
 
