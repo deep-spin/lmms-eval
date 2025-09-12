@@ -26,6 +26,9 @@ def load_args():
     parser.add_argument("--top_p",default=1.0, type=float, required=True,help="the top p for the judge model.")
     parser.add_argument("--tensor_parallel_size",default=1, type=int, required=True,help="the tensor parallel size for the judge model.")
     parser.add_argument("--api_url",default=None, type=str,help="the api url for the judge model.")
+    parser.add_argument("--random_ordering",default=False, action="store_true",help="if true the position of the baseline and model outputs will be shuffled randomly.")
+    parser.add_argument("--seed",default=None, type=int,help="the seed for the judge model.")
+
     args = parser.parse_args()
     return args
 
@@ -123,26 +126,22 @@ if __name__ == "__main__":
 
     # 4. Run judge
     logger.info(f"Running judge for language: {args.lp}")
-    full_responses = run_judge(questions, model_outputs, judge_config, baseline_model_outputs, images_bytes,args.lp)
-    f_resp = [extract_judge_message(resp) for resp in full_responses]
+    full_responses, position_ordering = run_judge(questions, model_outputs, judge_config, baseline_model_outputs, images_bytes,args.lp,args.random_ordering,args.seed)
 
     logger.info(f"Judge completed for language: {args.lp}")
-    parsed_responses = parse_judge_responses(full_responses, judge_config)
+    parsed_responses = parse_judge_responses(full_responses, judge_config,position_ordering_list=position_ordering)
     logger.info(f"Parsed responses completed for language: {args.lp}")
     
     # 7. Compute results
     results = compute_results(parsed_responses, judge_config)
     logger.info(f"Saving results...")
+
     # 5. Save results
     if args.save_judge_parsed_outputs:
         with open(os.path.join(args.output_dir, "judge_results_parsed.json"), "w") as f:
             logger.info(f"Saving parsed responses...")
             json.dump(parsed_responses, f)
 
-    if args.save_judge_full_responses:
-        with open(os.path.join(args.output_dir, "judge_results_full.json"), "w") as f:
-            logger.info(f"Saving full responses...")
-            json.dump(f_resp, f)
 
     if args.save_judge_results:
         with open(os.path.join(args.output_dir, "judge_results.json"), "w") as f:

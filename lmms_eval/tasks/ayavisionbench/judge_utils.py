@@ -12,6 +12,7 @@ from PIL import Image
 from tqdm import tqdm
 from typing import Dict, List, Optional, Union
 import litellm
+import random
 
 
 from lmms_eval.tasks.ayavisionbench.judge_templates import (
@@ -61,11 +62,33 @@ def img_bytes_to_url(image_dict: dict) -> str:
 
 
 
-def set_prompts(judge_config,questions,preds,baseline_model_outputs=None,language="en"):
+def set_prompts(judge_config,questions,preds,baseline_model_outputs=None,language="en",random_ordering=False,seed=None):
+    if random_ordering:
+        if seed is not None:
+            random.seed(seed)
+        else:
+            random.seed(42)
+    
+    order_flags = []  # True = (baseline first, pred second), False = (pred first, baseline second)
+
+
     if judge_config["judge_prompt_type"] == "comparative_gen":
         system_prompt = COMPARATIVE_GEN_SYSTEM_PROMPT
         user_prompt_template = COMPARATIVE_GEN_USER_PROMPT
-        prompts = [user_prompt_template.format(question=question,answer_1=base_output,answer_2=pred) for question,pred,base_output in zip(questions,preds,baseline_model_outputs)]
+
+        if not random_ordering:
+            prompts = [user_prompt_template.format(question=question,answer_1=base_output,answer_2=pred) for question,pred,base_output in zip(questions,preds,baseline_model_outputs)]
+        else:
+            for question, pred, base_output in zip(questions, preds, baseline_model_outputs):
+                if random.random() < 0.5:
+                    # baseline first
+                    prompts.append(user_prompt_template.format(question=question, answer_1=base_output, answer_2=pred))
+                    order_flags.append(True)
+                else:
+                    # pred first
+                    prompts.append(user_prompt_template.format(question=question, answer_1=pred, answer_2=base_output))
+                    order_flags.append(False)
+
     elif judge_config["judge_prompt_type"] == "direct_assessment":
         system_prompt = DIRECT_ASSESSMENT_SYSTEM_PROMPT
         user_prompt_template = DIRECT_ASSESSMENT_USER_PROMPT
@@ -73,10 +96,27 @@ def set_prompts(judge_config,questions,preds,baseline_model_outputs=None,languag
     elif judge_config["judge_prompt_type"] == "comparative":
         system_prompt = COMPARATIVE_SYS_PROMPT_NO_GEN
         user_prompt_template = COMPARATIVE_USER_PROMPT_NO_GEN
-        prompts = [user_prompt_template.format(question=question,completion_a=base_output,completion_b=pred,language=language) for question,pred,base_output in zip(questions,preds,baseline_model_outputs)]
+
+        if not random_ordering:
+            prompts = [user_prompt_template.format(question=question,completion_a=base_output,completion_b=pred,language=language) for question,pred,base_output in zip(questions,preds,baseline_model_outputs)]
+        else:
+            for question, pred, base_output in zip(questions, preds, baseline_model_outputs):
+                if random.random() < 0.5:
+                    # baseline first
+                    prompts.append(user_prompt_template.format(question=question, completion_a=base_output, completion_b=pred, language=language))
+                    order_flags.append(True)
+                else:
+                    # pred first
+                    prompts.append(user_prompt_template.format(question=question, completion_a=pred, completion_b=base_output, language=language))
+                    order_flags.append(False)
+
     else:
         raise ValueError(f"Invalid judge prompt type: {judge_config['judge_prompt_type']}")
-    return system_prompt, prompts
+    
+    if not random_ordering:
+        order_flags = None
+
+    return system_prompt, prompts, order_flags
 
 
 
@@ -87,6 +127,8 @@ def run_judge(
     baseline_model_outputs: Optional[List[str]] = None,
     images: Optional[Dict[str, Union[bytes, None]]] = None,
     language: str = "en",
+    random_ordering: bool = False,
+    seed: Optional[int] = None
 ) -> List[str]:
     """
     Run judge evaluation on predictions using LiteLLM.
@@ -132,7 +174,7 @@ def run_judge(
     #     assert litellm.supports_vision(model=model),f"Selected judge model:{model} does not support vision"
 
     # Get prompts
-    system_prompt, user_prompts = set_prompts(judge_config, questions, preds, baseline_model_outputs,language)
+    system_prompt, user_prompts, order_flags = set_prompts(judge_config, questions, preds, baseline_model_outputs,language,random_ordering,seed)
     
     responses = []
     total_items = len(user_prompts)
@@ -178,12 +220,13 @@ def run_judge(
             
             pbar.set_postfix({"Current": f"{idx+1}/{total_items}"})
             pbar.update(1)
-    return responses
+    return responses, order_flags
 
-def parse_comparative_response(response: str) -> str:
+
+def parse_comparative_response(response: str,baseline_first=True) -> str:
     """
     Extract verdict pattern from judge response.
-    Matches: [[A>>B]], [[A>B]], [[A=B]], [[B>A]], [[B>>A]]
+    Matches: [[A>>B]], [[A≫B]], [[A>B]], [[A=B]], [[B>A]], [[B>>A]], [[B≫A]]
     
     Args:
         response: String containing judge's response
@@ -191,57 +234,66 @@ def parse_comparative_response(response: str) -> str:
     Returns:
         str: Matched verdict pattern or None if no match found
     """
-    # Regex pattern to match all possible verdicts
-    pattern = r'\[\[(A>>B|A>B|A=B|B>A|B>>A)\]\]'
-    # Search for pattern in response
+    # Regex pattern to match all possible verdicts, supporting ">>" and "≫"
+    pattern = r'\[\[(A(?:>>|≫)B|A>B|A=B|B>A|B(?:>>|≫)A)\]\]'
     match = re.search(pattern, response)
-    # Return matched pattern or None
-    return match.group(0) if match else None
+    if baseline_first:
+        return match.group(0).replace("A","baseline").replace("B","model") if match.group(0) else None
+    else:
+        return match.group(0).replace("A","model").replace("B","baseline") if match.group(0) else None
 
 
-def parse_judge_responses(responses,judge_config):
+def parse_judge_responses(responses,judge_config,position_ordering_list=None):
     logger.info(f"Parsing responses for {judge_config['judge_prompt_type']} judge...")
     parsed_responses = []
-    for response in responses:
-        if response is None:
-            parsed_responses.append(None)
-            continue
-        response_data = response["choices"][0]["message"]["content"]
-        if judge_config["judge_prompt_type"] == "comparative":
-            parsed_responses.append(parse_comparative_response(response_data))
-        elif judge_config["judge_prompt_type"] == "direct_assessment":
-            raise NotImplementedError("Direct assessment parsing not implemented yet!")
+    if position_ordering_list is None:
+        for response in responses:
+            if response is None:
+                parsed_responses.append(None)
+                continue
+            response_data = response["choices"][0]["message"]["content"]
+            if judge_config["judge_prompt_type"] == "comparative":
+                parsed_responses.append(parse_comparative_response(response_data,baseline_first=True))
+            elif judge_config["judge_prompt_type"] == "direct_assessment":
+                raise NotImplementedError("Direct assessment parsing not implemented yet!")
+    else:
+        for response,pos_order in zip(responses,position_ordering_list):
+            if response is None:
+                parsed_responses.append(None)
+                continue
+            response_data = response["choices"][0]["message"]["content"]
+            parsed_responses.append(parse_comparative_response(response_data,baseline_first=pos_order))
     return parsed_responses
 
 
 def compute_results(responses,judge_config):
     logger.info(f"Computing results for {judge_config['judge_prompt_type']} judge...")
     if judge_config["judge_prompt_type"] == "comparative":
-        a_better_than_b = 0
-        a_significantly_better_than_b = 0
-        b_better_than_a = 0
-        b_significantly_better_than_a = 0
-        a_equal_to_b = 0
+        baseline_better_than_model = 0
+        baseline_significantly_better_than_model = 0
+        model_better_than_baseline = 0
+        model_significantly_better_than_baseline = 0
+        model_equal_to_baseline = 0
         no_answer = 0
         for response in responses:
-            if response == "[[A>>B]]":
-                a_significantly_better_than_b += 1  
-            elif response == "[[A>B]]":
-                a_better_than_b += 1
-            elif response == "[[B>>A]]":
-                b_significantly_better_than_a += 1
-            elif response == "[[B>A]]":
-                b_better_than_a += 1
-            elif response == "[[A=B]]":
-                a_equal_to_b += 1
+            if response == "[[model>>baseline]]" or response == "[[model≫baseline]]":
+                model_significantly_better_than_baseline += 1  
+            elif response == "[[model>baseline]]":
+                model_better_than_baseline += 1
+            elif response == "[[baseline>>model]]" or response == "[[baseline≫model]]":
+                baseline_significantly_better_than_model += 1
+            elif response == "[[baseline>model]]":
+                baseline_better_than_model += 1
+            elif response == "[[model=baseline]]":
+                model_equal_to_baseline += 1
             else:
                 no_answer += 1
         results = {
-            "baseline_better_than_model": a_better_than_b/len(responses),
-            "baseline_significantly_better_than_model": a_significantly_better_than_b/len(responses),
-            "model_better_than_baseline": b_better_than_a/len(responses),
-            "model_significantly_better_than_baseline": b_significantly_better_than_a/len(responses),
-            "model_equal_to_baseline": a_equal_to_b/len(responses),
+            "baseline_better_than_model": baseline_better_than_model/len(responses),
+            "baseline_significantly_better_than_model": baseline_significantly_better_than_model/len(responses),
+            "model_better_than_baseline": model_better_than_baseline/len(responses),
+            "model_significantly_better_than_baseline": model_significantly_better_than_baseline/len(responses),
+            "model_equal_to_baseline": model_equal_to_baseline/len(responses),
             "no_answer_matched": no_answer/len(responses)
         }
     elif judge_config["judge_prompt_type"] == "direct_assessment":
