@@ -6,6 +6,7 @@ from PIL import Image as PILImage
 from PIL import ImageDraw, ImageFont
 import io
 import base64
+from loguru import logger
 lmms_logger = logging.getLogger("lmms-eval")
 
 LANG_CONFIG = {
@@ -49,7 +50,32 @@ def construct_prompt(doc):
 def similar(a, b):
     return SequenceMatcher(None, a, b).ratio()
 
-def parse_multi_choice_response(response, options):
+
+def process_docs(docs):
+    """
+    Process documents...
+    """
+    docs = docs.select(random.sample(range(len(docs)), 20)) # filter out some samples!
+    # docs = docs.select(range(32,40 ))
+
+    def standardize_options(options):
+        standardized = []
+        for i, option in enumerate(options):
+            # Remove any existing option identifier
+            cleaned = re.sub(r'^[\(（]?[A-Da-d\d][\)）\.\s]+\s*', '', option).strip()
+            # Add standardized identifier
+            standardized.append(f"({chr(65+i)}) {cleaned}")
+        return standardized
+
+    def standardize_options_fn(example):
+        example['options'] = standardize_options(example['options'])
+        return example
+
+    # Standardize options to A, B, C, D
+    docs= docs.map(standardize_options_fn)
+    return docs
+
+def parse_multi_choice_response(response, options,doc_id):
     response = response.strip()
     
     # Original letter-matching logic
@@ -77,39 +103,39 @@ def parse_multi_choice_response(response, options):
         return best_match
 
     # If all else fails, return a random choice
+    logger.warning(f"Doc_id: {doc_id}. No match found between options and response.\
+    Options: {options}. \
+    Response: {response}. Returning random choice of [A, B, C, D].")
     return random.choice(['A', 'B', 'C', 'D'])
 
 def m3exam_process_results(doc, results):
     pred = results[0]
-    parsed_pred = parse_multi_choice_response(pred,doc['options'])
+    parsed_pred = parse_multi_choice_response(pred,doc['options'],doc['id'])
     standardized_answer = standardize_answer(doc["answer_text"], doc['options'])
 
-    return {
-        "m3exam": {
-            "language": doc["language"],
+    return {"language": doc["language"],
             "origin_response": pred,
             "answer_text": parsed_pred,
             "origin_answer": doc["answer_text"],
-            "standardized_answer": standardized_answer
-        }
-    }
+            "standardized_answer": standardized_answer,
+            "accuracy": parsed_pred == standardized_answer}
 
-def m3exam_aggregate_results(results):
-    total, match = 0, 0
-    for question in results:
-        total += 1
-        if question["answer_text"] == question["standardized_answer"]:
-            match += 1
+# def m3exam_aggregate_results(results):
+#     # total, match = 0, 0
+#     # for question in results:
+#     #     total += 1
+#     #     if question["answer_text"] == question["standardized_answer"]:
+#     #         match += 1
     
-    accuracy = match / total if total > 0 else 0
-    print(f"==========================")
-    print(f"========Final Score=======")
-    print(f"Total questions: {total}")
-    print(f"Correct answers: {match}")
-    print(f"Accuracy: {accuracy:.2%}")
-    print(f"==========================")
+#     # accuracy = match / total if total > 0 else 0
+#     # print(f"==========================")
+#     # print(f"========Final Score=======")
+#     # print(f"Total questions: {total}")
+#     # print(f"Correct answers: {match}")
+#     # print(f"Accuracy: {accuracy:.2%}")
+#     # print(f"==========================")
     
-    return accuracy
+#     return accuracy
 
 
 def replace_images_tokens(input_string, image_ids):
@@ -122,15 +148,6 @@ def replace_images_tokens(input_string, image_ids):
             if image_str in input_string:
                 input_string = input_string.replace(image_str, query_text)
     return input_string
-
-def standardize_options(options):
-    standardized = []
-    for i, option in enumerate(options):
-        # Remove any existing option identifier
-        cleaned = re.sub(r'^[\(（]?[A-Da-d\d][\)）\.\s]+\s*', '', option).strip()
-        # Add standardized identifier
-        standardized.append(f"({chr(65+i)}) {cleaned}")
-    return standardized
 
 
 def standardize_answer(answer, options):
@@ -219,8 +236,6 @@ def m3exam_doc_to_visual(doc):
     return visual
     
 def m3exam_doc_to_text(doc):
-    # Standardize options
-    doc['options'] = standardize_options(doc['options'])
     lang = doc["language"]
 
     # Process question text
