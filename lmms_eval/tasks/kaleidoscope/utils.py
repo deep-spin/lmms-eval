@@ -45,7 +45,7 @@ def process_docs(docs):
     Process documents...
     """
     # logger.info(f"processing docs")
-    # docs = docs.select(range(10)) # filter out some samples!
+    docs = docs.select(range(10)) # filter out some samples!
     # docs = docs.select(range(0,5))
     return docs
 
@@ -109,46 +109,6 @@ def doc_to_text(doc,lmms_eval_specific_kwargs=None ):
     return full_prompt
 
 
-# def em_doc_to_target(doc, model_specific_target_kwargs=None):
-#     answer = doc["answer"]
-#     if answer not in range(4):
-#         logger.warning(f"Invalid answer in dataset. Dataset seems to contain more than 4 options. Doc sample: {doc}")
-#     answer = doc["options"][doc["answer"]]
-#     return answer
-
-# def em_exact_match(pred, target):
-#     if pred == target:
-#         return 1
-#     else:
-#         return 0
-
-# def em_extract_final_answer(text):
-#     match = re.search(r'Final Answer:\s*(.*)', text)
-#     if match:
-#         return match.group(1)
-#     else:
-#         return text
-
-# def em_clean_option(answer: str) -> str:
-#     """
-#     Remove leading multiple-choice markers like 'A) ', 'B) ', 'C) ' 
-#     from the beginning of the answer string.
-#     If no marker is present, return the string unchanged.
-#     """
-#     return re.sub(r'^[A-Z]\)\s*', '', answer.strip())
-
-# def em_process_results(doc, results):
-#     generated_text = results[0]
-#     pred = extract_final_answer(generated_text)
-#     clean_pred = clean_option(pred)
-#     target_answer = doc["options"][doc["answer"]]
-#     if target_answer == None:
-#         logger.warning(f"Invalid answer in dataset. Doc sample: {doc}")
-#     match = exact_match(clean_pred.strip("."), target_answer.strip("."))
-#     breakpoint()
-#     return {"match": match}
-
-
 def doc_to_target(doc, model_specific_target_kwargs=None):
     if isinstance(doc["answer"], int):
         answer = index_to_option(doc["answer"])
@@ -158,29 +118,51 @@ def doc_to_target(doc, model_specific_target_kwargs=None):
         logger.warning(f"Invalid answer in dataset. Doc sample: {doc}")
     return answer
 
+
 def extract_final_answer(text: str) -> str:
-    """
-    Extract the choice letter from the model's final answer.
-    Examples:
-        "Final Answer: D) III > I > II" -> "D"
-        "Final Answer: B) Paris" -> "B"
-        "Final Answer: C" -> "C"
-    If no letter is found, return the full text.
-    """
-    match = re.search(r'Final Answer:\s*([A-Z])\)?', text.strip())
-    if match:
-        return match.group(1)
-    return text
+    # match = re.search(r'Final Answer:\s*([A-Z])\)?', text.strip())
+    # if match:
+    #     return match.group(1)
+
+    pattern_case1 = re.compile(r'^\(?([a-zA-Z])\)?$', re.IGNORECASE)
+    pattern_case2 = re.compile(r'(?i)(?:Final Answer:|Answer:)\s*\(?([a-zA-Z])\)?', re.DOTALL)
+    # Case 3: starts with letter optionally surrounded by parentheses, followed by text
+    pattern_case3 = re.compile(r'(?i)^\(?([a-zA-Z])\)?\)\s+.*', re.DOTALL)
+
+
+    text = text.strip()
+    
+    # Case 1
+    match1 = pattern_case1.match(text)
+    if match1:
+        return match1.group(1).lower().strip()
+    
+    # Case 2
+    match2 = pattern_case2.search(text)
+    if match2:
+        return match2.group(1).lower().strip()
+    
+    # Case 3
+    match3 = pattern_case3.match(text)
+    if match3:
+        return match3.group(1).lower().strip()
+    
+    logger.warning(f"No valid answer letter found in: {text!r}")
+    return None
 
 def process_results(doc, results):
     generated_text = results[0]
-    pred = extract_final_answer(generated_text).lower().strip()
-    target_answer = index_to_option(doc["answer"]).lower().strip()
+    pred = extract_final_answer(generated_text)
+    target_answer = index_to_option(doc["answer"])
     if target_answer == None:
-        logger.warning(f"Invalid answer in dataset. Doc sample: {doc}")
-    if pred == target_answer:
+        logger.warning(f"None target answer parsed from dataset. Doc sample: {doc}")
+        return {"accuracy": 0, "pred_answer": pred, "target_answer": target_answer}
+    if pred == None:
+        logger.warning(f"No valid answer letter found in generated text: {generated_text}. Doc sample: {doc}")
+        return {"accuracy": 0, "pred_answer": pred, "target_answer": target_answer}
+    elif pred.lower().strip() == target_answer.lower().strip():
         match = 1
     else:
         match = 0
-    return {"accuracy": match}
+    return {"accuracy": match, "pred_answer": pred.lower().strip(), "target_answer": target_answer.lower().strip()}
     
