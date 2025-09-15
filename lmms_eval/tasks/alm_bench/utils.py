@@ -191,6 +191,18 @@ def extract_final_answer(text: str) -> str:
     logger.warning(f"No valid answer letter found in: {text!r}")
     return None
 
+def alm_bench_doc_to_visual(doc):
+    if doc['file_name'] is None:
+        return []
+    else:
+        images = doc['file_name']
+        if isinstance(images, list):
+            images = [im.convert('RGB') for im in images]
+        else:
+            images = [images.convert('RGB')]
+    return images
+
+
 def transform_target_text_to_letter(target, choices):
     for i in range(len(choices)):
         if choices[i].lower().strip() == target.lower().strip():
