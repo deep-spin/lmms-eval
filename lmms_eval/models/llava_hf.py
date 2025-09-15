@@ -66,7 +66,7 @@ class LlavaHf(lmms):
         pretrained: str = "llava-hf/llava-1.5-7b-hf",
         revision: str = "main",
         device: str = "cuda",
-        dtype: Optional[Union[str, torch.dtype]] = "auto",
+        dtype: Optional[Union[str, torch.dtype]] = "bfloat16",
         batch_size: int = 1,
         trust_remote_code: Optional[bool] = False,
         attn_implementation: Optional[str] = None,
@@ -376,8 +376,9 @@ class LlavaHf(lmms):
                 )
                 outs = outs[:, inputs["input_ids"].shape[-1] :]
             except Exception as e:
+                print(f"Error {e} in generating")
                 eval_logger.error(f"Error {e} in generating")
-                text_outputs = ""
+                outs = ""
             # breakpoint()
             # text_outputs = self.tokenizer.batch_decode(cont, skip_special_tokens=True)[0]
             text_outputs = self.tokenizer.batch_decode(outs, skip_special_tokens=True)
