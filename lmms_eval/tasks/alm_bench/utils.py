@@ -207,6 +207,7 @@ def transform_target_text_to_letter(target, choices):
     for i in range(len(choices)):
         if choices[i].lower().strip() == target.lower().strip():
             return index_to_option(i).lower().strip()
+    logger.warning("No choice matched the target text. Target text: {target}. Choices: {choices}")
     return None
 
 def alm_bench_doc_to_target(doc, model_specific_target_kwargs):
@@ -222,7 +223,11 @@ def process_results(doc, results):
     pred = extract_final_answer(generated_text)
     true_answer, choices = split_answer_options(doc["Translated_Answer"])
     target_letter = transform_target_text_to_letter(true_answer, choices)
+    if target_letter is None:
+        logger.warning(f"No valid answer letter found in dataset. Doc sample: {doc}")
+        return {"accuracy": 0, "pred_answer": pred, "target_answer": target_letter}
     if pred is None:
+        logger.warning(f"No valid answer letter found in generated text: {generated_text}. Doc sample: {doc}")
         match = 0
     else:
         if pred.lower().strip() == target_letter.lower().strip():
