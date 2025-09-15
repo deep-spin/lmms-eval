@@ -66,10 +66,10 @@ class LlavaHf(lmms):
         pretrained: str = "llava-hf/llava-1.5-7b-hf",
         revision: str = "main",
         device: str = "cuda",
-        dtype: Optional[Union[str, torch.dtype]] = "auto",
+        dtype: Optional[Union[str, torch.dtype]] = "bfloat16",
         batch_size: int = 1,
         trust_remote_code: Optional[bool] = False,
-        attn_implementation: Optional[str] = None,
+        attn_implementation: Optional[str] = "sdpa",
         device_map: str = "",
         chat_template: Optional[str] = None,
         use_cache: bool = True,
@@ -222,12 +222,11 @@ class LlavaHf(lmms):
                 self.tokenizer.chat_template = VICUNA_CHAT_TEMPLATE
                 prompt = self.tokenizer.apply_chat_template(messages[:-1], tokenize=False, add_generation_prompt=True)
                 prompt_and_continuation = self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=False)
-
-            formatted_contexts = [prompt]
-            formatted_continuation = [prompt_and_continuation]
+            formatted_contexts = [prompt] #input prompt only
+            formatted_continuation = [prompt_and_continuation] #input prompt along with answer (continuation)
             model_inputs = self._image_processor(text=formatted_continuation, images=visuals, return_tensors="pt").to(self._device, self.model.dtype)
             labels = model_inputs["input_ids"].clone()
-            contxt_id = self._image_processor(text=formatted_contexts, return_tensors="pt")["input_ids"]
+            contxt_id = self._image_processor(text=formatted_contexts,images=visuals, return_tensors="pt")["input_ids"]
             labels[:, : contxt_id.shape[1]] = -100
 
             if self.accelerator.is_main_process and doc_id % 100 == 0:
@@ -338,7 +337,27 @@ class LlavaHf(lmms):
 
             # if self.accelerator.is_main_process and doc_id[0] % 100 == 0:
                 # eval_logger.debug(f"Prompt for doc ID {doc_id[0]}:\n\n{text}\n")
+            visual_tokens = text.count("<image>")
+            num_images = len(visuals)
 
+            if visual_tokens != num_images:
+                eval_logger.warning(f"Visual tokens {visual_tokens} do not match number of images {num_images}. Replacing with {num_images} images tokens.")
+                # replace "<image>" with nb * images tokens FIXME: -> mess
+                # Remove all <image> tokens with any surrounding newlines
+                text_replaced = re.sub(r'\n?<image>\n?', '', text)
+                # text = text.replace("<image>\n", "")
+                # text = text.replace("\n<image>", "")
+                # text = text.replace("<image>\n", "")
+                # text = text.replace("<image>", "")
+                # text = text.replace("<start_of_turn>user\n", "<start_of_turn>user\n" + " ".join(["<image>"] * num_images) + "\n")
+                text_final = re.sub(
+                    r'(<start_of_turn>user\n)',           # Group 1: captures "<start_of_turn>user\n"
+                    r'\1' + ' '.join(['<image>'] * num_images) + '\n',  # Replace with: captured group + image tokens
+                    text_replaced
+                )
+                text=text_final
+                #print("After: ", text)
+                #import pdb; pdb.set_trace()
             if task_type == "video":
                 try:
                     visuals = [self.load_video(visuals, self.max_frames_num)]
@@ -378,6 +397,7 @@ class LlavaHf(lmms):
             except Exception as e:
                 eval_logger.error(f"Error {e} in generating")
                 text_outputs = ""
+
             # breakpoint()
             # text_outputs = self.tokenizer.batch_decode(cont, skip_special_tokens=True)[0]
             text_outputs = self.tokenizer.batch_decode(outs, skip_special_tokens=True)
