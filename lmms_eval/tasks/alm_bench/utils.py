@@ -39,12 +39,12 @@ def exact_match(pred, target):
     else:
         return 0
     
-def alm_bench_doc_to_visual(doc):
+
     image = (doc['file_name']).convert('RGB')
     return [image]
 
 def process_docs(docs):
-    # docs = docs.select(range(10))
+    # docs = docs.select(range(5))
     for doc in docs:
         true_answer, choices = split_answer_options(doc["Translated_Answer"])
         if true_answer == None or choices == None:
@@ -161,18 +161,35 @@ def alm_bench_doc_to_text(doc, lmms_eval_specific_kwargs):
 
 
 def extract_final_answer(text: str) -> str:
-    """
-    Extract the choice letter from the model's final answer.
-    Examples:
-        "Final Answer: D) III > I > II" -> "D"
-        "Final Answer: B) Paris" -> "B"
-        "Final Answer: C" -> "C"
-    If no letter is found, return the full text.
-    """
-    match = re.search(r'Final Answer:\s*([A-Z])\)?', text.strip())
-    if match:
-        return match.group(1)
-    return text
+    # match = re.search(r'Final Answer:\s*([A-Z])\)?', text.strip())
+    # if match:
+    #     return match.group(1)
+
+    pattern_case1 = re.compile(r'^\(?([a-zA-Z])\)?$', re.IGNORECASE)
+    pattern_case2 = re.compile(r'(?i)(?:Final Answer:|Answer:)\s*\(?([a-zA-Z])\)?', re.DOTALL)
+    # Case 3: starts with letter optionally surrounded by parentheses, followed by text
+    pattern_case3 = re.compile(r'(?i)^\(?([a-zA-Z])\)?\)\s+.*', re.DOTALL)
+
+
+    text = text.strip()
+    
+    # Case 1
+    match1 = pattern_case1.match(text)
+    if match1:
+        return match1.group(1).lower().strip()
+    
+    # Case 2
+    match2 = pattern_case2.search(text)
+    if match2:
+        return match2.group(1).lower().strip()
+    
+    # Case 3
+    match3 = pattern_case3.match(text)
+    if match3:
+        return match3.group(1).lower().strip()
+    
+    logger.warning(f"No valid answer letter found in: {text!r}")
+    return None
 
 def transform_target_text_to_letter(target, choices):
     for i in range(len(choices)):
@@ -190,11 +207,14 @@ def alm_bench_doc_to_target(doc, model_specific_target_kwargs):
 
 def process_results(doc, results):
     generated_text = results[0]
-    pred = extract_final_answer(generated_text).lower().strip()
+    pred = extract_final_answer(generated_text)
     true_answer, choices = split_answer_options(doc["Translated_Answer"])
     target_letter = transform_target_text_to_letter(true_answer, choices)
-    if pred == target_letter:
-        match = 1
-    else:
+    if pred is None:
         match = 0
-    return {"accuracy": match}
+    else:
+        if pred.lower().strip() == target_letter.lower().strip():
+            match = 1
+        else:
+            match = 0
+    return {"accuracy": match,"parsed_answer": pred,"target_answer": target_letter}
