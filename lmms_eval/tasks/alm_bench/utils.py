@@ -150,16 +150,6 @@ def alm_bench_doc_to_text(doc, lmms_eval_specific_kwargs):
     return full_prompt
 
 
-# def alm_bench_process_results(doc, results):
-#     pred = extract_final_answer(results[0])
-#     target, _ = split_answer_options(doc["Translated_Answer"])
-#     if target == None:
-#         print(doc["Translated_Answer"])
-#     match = exact_match(pred, target.strip("."))
-
-#     return {"match": match}
-
-
 def extract_final_answer(text: str) -> str:
     # match = re.search(r'Final Answer:\s*([A-Z])\)?', text.strip())
     # if match:
@@ -213,8 +203,7 @@ def transform_target_text_to_letter(target, choices):
 def alm_bench_doc_to_target(doc, model_specific_target_kwargs):
     true_answer, choices  = split_answer_options(doc["Translated_Answer"])
     if true_answer == None or choices == None:
-        logger.warning(f"Error encountered while splitting answer options in dataset. Doc sample: {doc}")
-        breakpoint()
+        logger.warning(f"Error encountered while splitting answer options in dataset. Doc sample: {doc}. In doc_to_target.")
     target_letter = transform_target_text_to_letter(true_answer, choices)
     return target_letter
 
