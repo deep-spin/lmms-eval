@@ -207,6 +207,18 @@ def extract_final_answer_alm_bench(text: str) -> str:
     logger.warning(f"No valid answer letter found in: {text!r}")
     return None
 
+def alm_bench_doc_to_visual(doc):
+    if doc['file_name'] is None:
+        return []
+    else:
+        images = doc['file_name']
+        if isinstance(images, list):
+            images = [im.convert('RGB') for im in images]
+        else:
+            images = [images.convert('RGB')]
+    return images
+
+
 def transform_target_text_to_letter(target, choices):
     """
     Given the true answer text (`target`) and a list of answer choices (`choices`),
@@ -256,6 +268,7 @@ def process_results(doc, results):
 
 
     if pred is None:
+        logger.warning(f"No valid answer letter found in generated text: {generated_text}. Doc sample: {doc}")
         match = 0
     else:
         if pred.lower().strip() == target_letter.lower().strip():
