@@ -3,6 +3,7 @@ from typing import List, Optional, Tuple, Union
 
 import numpy as np
 import PIL
+import re
 import torch
 from accelerate import Accelerator, DistributedType
 from accelerate.state import AcceleratorState
@@ -95,6 +96,7 @@ class LlavaHf(lmms):
         model_type = getattr(config, "model_type", "llava")
         model_type = model_map[model_type]
         self._model = model_type.from_pretrained(pretrained, revision=revision, torch_dtype=dtype, device_map=self.device_map, trust_remote_code=trust_remote_code, attn_implementation=attn_implementation)
+        self._model.to(self._device)
 
         self.pretrained = pretrained
         self._image_processor = AutoProcessor.from_pretrained(pretrained, revision=revision, trust_remote_code=trust_remote_code)
@@ -395,11 +397,13 @@ class LlavaHf(lmms):
                 )
                 outs = outs[:, inputs["input_ids"].shape[-1] :]
             except Exception as e:
+                print(f"Error {e} in generating")
                 eval_logger.error(f"Error {e} in generating")
-                text_outputs = ""
+                outs = ""
 
             # breakpoint()
             # text_outputs = self.tokenizer.batch_decode(cont, skip_special_tokens=True)[0]
+            
             text_outputs = self.tokenizer.batch_decode(outs, skip_special_tokens=True)
             if text_outputs is not None and len(text_outputs) > 0:
                 text_outputs = text_outputs[0]

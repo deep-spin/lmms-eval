@@ -5,6 +5,7 @@ import sys
 import numpy as np 
 # from lmms_eval.utils import extract_final_answer
 from loguru import logger
+from fuzzywuzzy import fuzz
 
 def country_map(lang):
     language_to_country = {
@@ -33,6 +34,7 @@ def country_map(lang):
         "Finnish": "Finland"
     }
     return language_to_country[lang]
+
 def exact_match(pred, target):
     if pred == target:
         return 1
@@ -44,6 +46,8 @@ def exact_match(pred, target):
     return [image]
 
 def process_docs(docs):
+    # return only the first 18
+    # return docs.select(range(19))
     # docs = docs.select(range(5))
     for doc in docs:
         true_answer, choices = split_answer_options(doc["Translated_Answer"])
@@ -112,6 +116,7 @@ def split_answer_options(text):
         choices = [opt.strip() for opt in re.split(r"[、，,](?=\s*[A-ZА-ЯЇЄІ])", raw_choices)]
     else:
         choices = [opt.strip() for opt in re.split(r"[、，,]", raw_choices)]
+    
     return true_answer, choices
 
 def index_to_option(n: int) -> str:
@@ -150,15 +155,31 @@ def alm_bench_doc_to_text(doc, lmms_eval_specific_kwargs):
     return full_prompt
 
 
-def extract_final_answer(text: str) -> str:
+# def alm_bench_process_results(doc, results):
+#     pred = extract_final_answer(results[0])
+#     target, _ = split_answer_options(doc["Translated_Answer"])
+#     if target == None:
+#         print(doc["Translated_Answer"])
+#     match = exact_match(pred, target.strip("."))
+
+#     return {"match": match}
+
+
+def extract_final_answer_alm_bench(text: str) -> str:
     # match = re.search(r'Final Answer:\s*([A-Z])\)?', text.strip())
     # if match:
     #     return match.group(1)
 
+    # Case 1 - expects the whole text to be a single letter, e.g. "A)", "B"
     pattern_case1 = re.compile(r'^\(?([a-zA-Z])\)?$', re.IGNORECASE)
+    # Case 2 - expects the text to be "Final Answer: " or "Answer: " followed by a single letter, e.g. "Final Answer: A)", "Answer: B"
     pattern_case2 = re.compile(r'(?i)(?:Final Answer:|Answer:)\s*\(?([a-zA-Z])\)?', re.DOTALL)
     # Case 3: starts with letter optionally surrounded by parentheses, followed by text
+    # e.g. "A) The answer is A", "B) The answer is B"
     pattern_case3 = re.compile(r'(?i)^\(?([a-zA-Z])\)?\)\s+.*', re.DOTALL)
+    # Case 4: match a letter at the start of a line that looks like "A),
+    # e.g: uquê de rosas brancas ao redor. Portanto, a resposta correta é:\n\nA) Nossa Senhora de Fátima
+    pattern_case4 = re.compile(r'(?m)^\s*\(?([A-Za-z])\)?\s*\)', re.MULTILINE)
 
 
     text = text.strip()
@@ -178,6 +199,11 @@ def extract_final_answer(text: str) -> str:
     if match3:
         return match3.group(1).lower().strip()
     
+    # Case 4
+    match4 = pattern_case4.search(text)
+    if match4:
+        return match4.group(1).lower().strip()
+    
     logger.warning(f"No valid answer letter found in: {text!r}")
     return None
 
@@ -194,27 +220,53 @@ def alm_bench_doc_to_visual(doc):
 
 
 def transform_target_text_to_letter(target, choices):
-    for i in range(len(choices)):
-        if choices[i].lower().strip() == target.lower().strip():
-            return index_to_option(i).lower().strip()
-    logger.warning("No choice matched the target text. Target text: {target}. Choices: {choices}")
-    return None
+    """
+    Given the true answer text (`target`) and a list of answer choices (`choices`),
+    returns the letter (e.g., 'a', 'b', 'c', ...) corresponding to the choice that
+    best matches the target. Uses fuzzy string matching to handle cases where
+    choices may contain multiple options in a single string or minor text variations.
+
+    Args:
+        target (str): The correct answer text.
+        choices (List[str]): List of answer choice strings.
+
+    Returns:
+        str: The letter corresponding to the best-matching choice (e.g., 'a', 'b', ...).
+    """
+    if not choices or not target:
+        raise ValueError(f"Empty target or choices in transform_target_text_to_letter. Target: {target}, Choices: {choices}")
+
+    # Compute fuzzy match ratio for each choice
+    fuzzy_ratios = [
+        fuzz.ratio(choice.lower(), target.lower())
+        for choice in choices
+    ]
+
+    # Find the index of the choice with the highest fuzzy ratio
+    max_ratio_index = int(np.argmax(fuzzy_ratios))
+
+    return index_to_option(max_ratio_index).lower()
 
 def alm_bench_doc_to_target(doc, model_specific_target_kwargs):
     true_answer, choices  = split_answer_options(doc["Translated_Answer"])
     if true_answer == None or choices == None:
-        logger.warning(f"Error encountered while splitting answer options in dataset. Doc sample: {doc}. In doc_to_target.")
+        logger.warning(f"Error encountered while splitting answer options in dataset. Doc sample: {doc}")
+        raise ValueError(f"Error encountered while splitting answer options in dataset. Doc sample: {doc}")
+    
     target_letter = transform_target_text_to_letter(true_answer, choices)
     return target_letter
 
 def process_results(doc, results):
     generated_text = results[0]
-    pred = extract_final_answer(generated_text)
+    
+    # extract the final answer
+    pred = extract_final_answer_alm_bench(generated_text)
+
+    # transform the target text to a letter
     true_answer, choices = split_answer_options(doc["Translated_Answer"])
     target_letter = transform_target_text_to_letter(true_answer, choices)
-    if target_letter is None:
-        logger.warning(f"No valid answer letter found in dataset. Doc sample: {doc}")
-        return {"accuracy": 0, "pred_answer": pred, "target_answer": target_letter}
+
+
     if pred is None:
         logger.warning(f"No valid answer letter found in generated text: {generated_text}. Doc sample: {doc}")
         match = 0
@@ -224,3 +276,7 @@ def process_results(doc, results):
         else:
             match = 0
     return {"accuracy": match,"parsed_answer": pred,"target_answer": target_letter}
+
+def alm_bench_doc_to_visual(doc):
+    image = (doc['file_name']).convert('RGB')
+    return [image]

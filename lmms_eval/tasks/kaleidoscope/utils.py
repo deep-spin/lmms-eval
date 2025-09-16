@@ -45,7 +45,7 @@ def process_docs(docs):
     Process documents...
     """
     # logger.info(f"processing docs")
-    docs = docs.select(range(10)) # filter out some samples!
+    # docs = docs.select(range(10)) # filter out some samples!
     # docs = docs.select(range(0,5))
     return docs
 
@@ -147,6 +147,7 @@ def extract_final_answer(text: str) -> str:
     if match3:
         return match3.group(1).lower().strip()
     
+    # import pdb; pdb.set_trace()
     logger.warning(f"No valid answer letter found in: {text!r}")
     return None
 
