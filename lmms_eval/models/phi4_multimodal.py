@@ -44,7 +44,7 @@ class Phi4(lmms):
 
     def __init__(
         self,
-        pretrained: str = "microsoft/Phi-4-multimodal-instruct",
+        pretrained: str = "microsoft/phi-4-multimodal-instruct",
         revision: str = "main",
         device: str = "cuda",
         dtype: Optional[Union[str, torch.dtype]] = "auto",
@@ -75,9 +75,10 @@ class Phi4(lmms):
         self._model = AutoModelForCausalLM.from_pretrained(pretrained, revision=revision, torch_dtype=dtype, device_map=self.device_map, trust_remote_code=trust_remote_code, attn_implementation=attn_implementation)
 
         self.pretrained = pretrained
+
         self._processor = AutoProcessor.from_pretrained(pretrained, revision=revision, trust_remote_code=trust_remote_code)
         # Pad from left for batched generation: https://huggingface.co/docs/transformers/v4.39.3/en/model_doc/llava#usage-tips
-        self._processor.tokenizer.padding_side = "left"
+        # self._processor.tokenizer.padding_side = "left"
         self._tokenizer = self._processor.tokenizer
         self._config = self._model.config
         self.batch_size_per_gpu = int(batch_size)
