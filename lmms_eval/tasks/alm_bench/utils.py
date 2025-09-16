@@ -3,7 +3,7 @@ import re
 import string
 import sys
 import numpy as np 
-from lmms_eval.utils import extract_final_answer
+# from lmms_eval.utils import extract_final_answer
 from loguru import logger
 
 def country_map(lang):
