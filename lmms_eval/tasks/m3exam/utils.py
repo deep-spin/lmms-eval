@@ -55,7 +55,7 @@ def process_docs(docs):
     """
     Process documents...
     """
-    docs = docs.select(random.sample(range(len(docs)), 20)) # filter out some samples!
+    # docs = docs.select(random.sample(range(len(docs)), 20)) # filter out some samples!
     # docs = docs.select(range(32,40 ))
 
     def standardize_options(options):
