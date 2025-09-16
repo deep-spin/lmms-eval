@@ -101,10 +101,11 @@ if __name__ == "__main__":
     
     args = load_args()
 
+    logger.info(f"Running judge for language: {args.lp}.")
     # 1. Load Aya Vision Bench data
     aya_dataset,questions,images_bytes = load_aya_vision_bench_data(args.lp)
 
-    # 2. Load model outputs
+    # # 2. Load model outputs
     baseline_model_outputs = load_model_outputs(args.baseline_output_path)
     model_outputs = load_model_outputs(args.model_output_path)
     logger.info(f"Loaded baseline and model outputs for language: {args.lp}")
@@ -134,7 +135,6 @@ if __name__ == "__main__":
     
     # 7. Compute results
     results = compute_results(parsed_responses, judge_config)
-    logger.info(f"Saving results...")
 
     # 5. Save results
     if args.save_judge_parsed_outputs:
@@ -147,6 +147,9 @@ if __name__ == "__main__":
         with open(os.path.join(args.output_dir, "judge_results.json"), "w") as f:
             logger.info(f"Saving results...")
             json.dump(results, f)
+    
+
+        
 
     
     

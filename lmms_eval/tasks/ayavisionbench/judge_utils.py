@@ -71,7 +71,7 @@ def set_prompts(judge_config,questions,preds,baseline_model_outputs=None,languag
     
     order_flags = []  # True = (baseline first, pred second), False = (pred first, baseline second)
 
-
+    prompts = []
     if judge_config["judge_prompt_type"] == "comparative_gen":
         system_prompt = COMPARATIVE_GEN_SYSTEM_PROMPT
         user_prompt_template = COMPARATIVE_GEN_USER_PROMPT
@@ -243,26 +243,54 @@ def parse_comparative_response(response: str,baseline_first=True) -> str:
         return match.group(0).replace("A","model").replace("B","baseline") if match.group(0) else None
 
 
+def extract_judge_decision(response: str, baseline_first: bool = True) -> str:
+    """Extract judge decision from response with simplified pattern matching."""
+    pattern = r'\[\[(A(?:>>|≫)B|A>B|A=B|B>A|B(?:>>|≫)A)\]\]'
+    match = re.search(pattern, response)
+    
+    if not match:
+        logging.warning(f"No valid judge decision pattern found in response: {response[:100]}...")
+        return None
+    
+    decision = match.group(0)
+    if baseline_first:
+        return decision.replace("A", "baseline").replace("B", "model")
+    else:
+        return decision.replace("A", "model").replace("B", "baseline")
+
 def parse_judge_responses(responses,judge_config,position_ordering_list=None):
     logger.info(f"Parsing responses for {judge_config['judge_prompt_type']} judge...")
     parsed_responses = []
     if position_ordering_list is None:
-        for response in responses:
+        for idx,response in enumerate(responses):
             if response is None:
-                parsed_responses.append(None)
+                parsed_responses.append("None")
+                logger.warning(f"Response is None for {idx}.")
                 continue
             response_data = response["choices"][0]["message"]["content"]
             if judge_config["judge_prompt_type"] == "comparative":
-                parsed_responses.append(parse_comparative_response(response_data,baseline_first=True))
+                parsed_answer = parse_comparative_response(response_data,baseline_first=True)
+                if parsed_answer is None:
+                    logger.warning(f"Parsed answer is None for {idx}. Response: {response_data}")
+                    parsed_answer = "None"
+                parsed_responses.append(parsed_answer)
             elif judge_config["judge_prompt_type"] == "direct_assessment":
                 raise NotImplementedError("Direct assessment parsing not implemented yet!")
     else:
-        for response,pos_order in zip(responses,position_ordering_list):
+        for idx, (response,pos_order) in enumerate(zip(responses,position_ordering_list)):
             if response is None:
-                parsed_responses.append(None)
+                parsed_responses.append("None")
+                logger.warning(f"Response is None for {idx}.")
                 continue
             response_data = response["choices"][0]["message"]["content"]
-            parsed_responses.append(parse_comparative_response(response_data,baseline_first=pos_order))
+            if judge_config["judge_prompt_type"] == "comparative":
+                parsed_answer = parse_comparative_response(response_data,baseline_first=pos_order)
+                if parsed_answer is None:
+                    logger.warning(f"Parsed answer is None for {idx}. Response: {response_data}")
+                    parsed_answer = "None"
+                parsed_responses.append(parsed_answer)
+            elif judge_config["judge_prompt_type"] == "direct_assessment":
+                raise ValueError("Direct assessment should not be used with position ordering list!This is used only for comparative judge.")
     return parsed_responses
 
 
@@ -275,6 +303,7 @@ def compute_results(responses,judge_config):
         model_significantly_better_than_baseline = 0
         model_equal_to_baseline = 0
         no_answer = 0
+        none_answer = 0
         for response in responses:
             if response == "[[model>>baseline]]" or response == "[[model≫baseline]]":
                 model_significantly_better_than_baseline += 1  
@@ -284,9 +313,13 @@ def compute_results(responses,judge_config):
                 baseline_significantly_better_than_model += 1
             elif response == "[[baseline>model]]":
                 baseline_better_than_model += 1
-            elif response == "[[model=baseline]]":
+            elif response == "[[model=baseline]]" or response == "[[baseline=model]]":
                 model_equal_to_baseline += 1
+            elif response == "None":
+                logger.warning(f"None answer for {response}")
+                none_answer += 1
             else:
+                logger.warning(f"This response is not getting matched: {response}")
                 no_answer += 1
         results = {
             "baseline_better_than_model": baseline_better_than_model/len(responses),
@@ -294,6 +327,7 @@ def compute_results(responses,judge_config):
             "model_better_than_baseline": model_better_than_baseline/len(responses),
             "model_significantly_better_than_baseline": model_significantly_better_than_baseline/len(responses),
             "model_equal_to_baseline": model_equal_to_baseline/len(responses),
+            "none_answer": none_answer/len(responses),
             "no_answer_matched": no_answer/len(responses)
         }
     elif judge_config["judge_prompt_type"] == "direct_assessment":
