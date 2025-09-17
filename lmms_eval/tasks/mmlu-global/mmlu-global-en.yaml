@@ -1,0 +1,32 @@
+dataset_path: CohereLabs/Global-MMLU
+task: "mmlu-global-en"
+dataset_name: en
+test_split: test
+output_type: generate_until
+
+doc_to_visual: !function utils.doc_to_visual
+doc_to_text: !function utils.doc_to_text
+doc_to_target: !function utils.doc_to_target
+process_results: !function utils.process_results
+process_docs: !function utils.process_docs
+
+generation_kwargs:
+  max_new_tokens: 1024
+  temperature: 0
+  do_sample: False
+
+
+metric_list:
+  - metric: accuracy # The name of the metric to use for evaluation. The process_results function should return the metric name and the metric value, in format of `{metric_name: results}`. And the aggregation function will use the results to get the final score.
+    aggregation: mean # The name of the aggregation function to use for evaluation.
+    higher_is_better: true # 
+
+metadata:
+  - version: 0.0
+model_specific_target_kwargs:
+  default: "mcq"
+lmms_eval_specific_kwargs:
+  default:
+    prompt_format: "mcq"
+    pre_prompt: "For the given Multiple Choice Question Answer below, analyze the question and answer strictly from one of the options below. End your answer with 'Final Answer: <your answer>' where <your answer> is strictly the choice letter only."
+    post_prompt: ""
