@@ -307,9 +307,6 @@ class Phi4(lmms):
             # this is safe to assume because the `grouper` object ensures it.
             gen_kwargs = all_gen_kwargs[0]
 
-            if self.accelerator.is_main_process and doc_id[0] % 100 == 0:
-                eval_logger.debug(f"Prompt for doc ID {doc_id[0]}:\n\n{text}\n")
-
             if "max_new_tokens" not in gen_kwargs:
                 gen_kwargs["max_new_tokens"] = 1024
             if "temperature" not in gen_kwargs:
@@ -335,8 +332,6 @@ class Phi4(lmms):
                 cont = inputs["input_ids"]
             cont = cont[:, inputs["input_ids"].shape[-1] :]
             text_outputs = self._processor.batch_decode(cont, skip_special_tokens=True)[0]
-            if self.accelerator.is_main_process and doc_id[0] % 100 == 0:
-                eval_logger.debug(f"Generated text for doc ID {doc_id[0]}:\n\n{text_outputs}\n")
 
             res.append(text_outputs)
             self.cache_hook.add_partial("generate_until", (contexts[0], gen_kwargs), text_outputs)
