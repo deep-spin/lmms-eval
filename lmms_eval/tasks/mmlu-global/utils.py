@@ -17,7 +17,7 @@ def process_docs(docs):
     Process documents...
     """
     # logger.info(f"processing docs")
-    docs = docs.select(range(10)) # filter out some samples!
+    # docs = docs.select(range(10)) # filter out some samples!
     # docs = docs.select(range(0,5))
     return docs
 
