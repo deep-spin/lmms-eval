@@ -72,7 +72,16 @@ class Phi4(lmms):
             dtype = getattr(torch, dtype)
 
         self.max_frames_num = max_frames_num
-        self._model = AutoModelForCausalLM.from_pretrained(pretrained, revision=revision, torch_dtype=dtype, device_map=self.device_map, trust_remote_code=trust_remote_code, attn_implementation=attn_implementation)
+        
+        self._model = AutoModelForCausalLM.from_pretrained(
+            pretrained, 
+            revision=revision, 
+            torch_dtype=dtype, 
+            device_map=self.device_map, 
+            trust_remote_code=trust_remote_code, 
+            attn_implementation=attn_implementation
+        )
+        self._model.to(self._device)
 
         self.pretrained = pretrained
 
