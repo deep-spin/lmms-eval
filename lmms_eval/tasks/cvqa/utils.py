@@ -5,6 +5,11 @@ import os
 
 from lmms_eval.tasks._task_utils.file_utils import generate_submission_file
 
+def process_docs(docs):
+    # return only the first 10
+    #return docs.select(range(10))
+    return docs
+
 def cvqa_doc_to_text(doc, model_specific_prompt_kwargs):
     if model_specific_prompt_kwargs["translated"] is True:
         print("Using translated prompt")
@@ -69,8 +74,15 @@ def cvqa_process_results(doc, results):
     target = cvqa_doc_to_target(doc)
     pred = parse_multi_choice_response(results[0],doc['Options'])
     pred_numerical = {'A':0, 'B':1, 'C':2, 'D':3}[pred]
-    results_dict = {"cvqa_passthrough": {"id": doc["ID"], "pred": pred_numerical, "target": target}}
-    return results_dict
+    #     f.write(f"{doc['ID']},{pred_numerical}\n")
+    if pred == target:
+        exact_match = 1.0
+    elif len(pred) >= 2 and pred[0].isupper() and pred[1] == ".": 
+        exact_match = 1.0 if pred[0] == target else 0.0
+    else:
+        exact_match = 0.0
+    return {"id": doc["ID"], "pred": pred_numerical, "target": target, "accuracy": exact_match}
+
 
     # with open (output_dir + "/cvqa_predictions.csv", "a") as f:
     #     f.write(f"{doc['ID']},{pred_numerical}\n")
