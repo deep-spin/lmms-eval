@@ -1,0 +1,38 @@
+group: mmlu-global
+task:
+  - mmlu-global-en # [yes]
+  - mmlu-global-de # [yes]
+  - mmlu-global-nl # [yes]
+  - mmlu-global-es # [yes]
+  - mmlu-global-fr # [yes]
+  - mmlu-global-pt # [yes]
+  - mmlu-global-uk # [yes]
+  - mmlu-global-hi # [yes]
+  - mmlu-global-zh # [yes]
+  - mmlu-global-ru # [yes]
+  - mmlu-global-cs # [yes]
+  - mmlu-global-ko # [yes]
+  - mmlu-global-ja # [yes]
+  - mmlu-global-it # [yes]
+  - mmlu-global-pl # [yes]
+  # - mmlu-global-no # [no]
+  - mmlu-global-ro # [yes]
+
+
+  
+  - mmlu-global-sv # not supported by towervision but supported by tower-plus [yes]
+  #- mmlu-global-is # not supported by towervision but supported by tower-plus [no]
+  #- mmlu-global-fi # not supported by towervision but supported by tower-plus [no]
+  #- mmlu-global-da # not supported by towervision but supported by tower-plus [no]
+  #- mmlu-global-hu # not supported by towervision but supported by tower-plus [no]
+
+  - mmlu-global-ar # not supported by any model [yes]
+  - mmlu-global-el # not supported by any model [yes]
+  - mmlu-global-vi # not supported by any model [yes]
+  - mmlu-global-tr # not supported by any model [yes]
+  - mmlu-global-te # not supported by any model [yes]
+
+
+
+
+

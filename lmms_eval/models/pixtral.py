@@ -198,6 +198,13 @@ class Pixtral(lmms):
     @property
     def world_size(self):
         return self._world_size
+        
+    def flatten(self, input):
+        new_list = []
+        for i in input:
+            for j in i:
+                new_list.append(j)
+        return new_list
 
     def tok_encode(self, string: str, left_truncate_len=None, add_special_tokens=None) -> List[int]:
         """Tokenize a string."""
@@ -262,19 +269,15 @@ class Pixtral(lmms):
             # TODO: for now, images and text are passed seperatly to the processor
             assert self.batch_size_per_gpu == 1, "Do not support batch_size_per_gpu > 1 for now"
             context = contexts[0]
-            visual = visuals[0]
-            
-            # TODO: handle multiple images / understand the `visuals` object
-            if not isinstance(visual, list):
-                visual = [visual]
+            if visuals !=[None]:
+                visuals = self.flatten(visuals)
 
             # vLLM does not work with bytes, so we need to convert it to a data url
-            image_urls = [self.get_image_url(v) for v in visual]
+            image_urls = [self.get_image_url(v) for v in visuals]
             
-            # image_url = self.get_image_url(visual)
-
             # Pixtral expects inputs in a different format, and doesn't work with <image> tokens added in the middle of the prompt.
-            context = context.replace(DEFAULT_IMAGE_TOKEN, "")
+            if DEFAULT_IMAGE_TOKEN in context:
+                context = context.replace(DEFAULT_IMAGE_TOKEN, "")
 
             if self.tag:
                 context = f"{self.tag} " + context
