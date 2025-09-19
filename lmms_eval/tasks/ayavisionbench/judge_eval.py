@@ -54,6 +54,18 @@ def load_aya_vision_bench_data(language):
         "pt": "por_Latn",
         "ru": "rus_Cyrl",
         "zh": "zho_Hans",
+        "hi": "hin_Deva",
+        "ja": "jpn_Jpan",
+        "pl": "pol_Latn",
+        "rom": "ron_Latn",
+        "ru": "rus_Cyrl",
+        "tu": "tur_Latn",
+        "uk": "ukr_Cyrl",
+        "zh": "zho_Hans",
+        "gr": "ell_Grek",
+        "vi": "vie_Latn",
+        "ar": "ara_Arab",
+        "he": "heb_Hebr",
     }
     dataset = load_dataset("CohereForAI/AyaVisionBench",name=mapping_language_to_dataset_name[language],split="test")
     logger.info(f"Loaded Aya Vision Bench dataset for language: {language}")
