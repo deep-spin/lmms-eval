@@ -17,6 +17,7 @@ task:
   - aya-vision-bench-gen-pl
   - aya-vision-bench-gen-rom
 
-  # - aya-vision-bench-gen-gr
-  # - aya-vision-bench-gen-ar
-  # - aya-vision-bench-gen-tu
+  - aya-vision-bench-gen-gr
+  - aya-vision-bench-gen-ar
+  - aya-vision-bench-gen-tu
+  - aya-vision-bench-gen-vi
