@@ -43,12 +43,28 @@ class VLLM(lmms):
         max_frame_num: int = 32,
         threads: int = 16,  # Threads to use for decoding visuals
         trust_remote_code: Optional[bool] = True,
+        mm_per_prompt: Optional[dict] = None,
         **kwargs,
     ) -> None:
         super().__init__()
         # Manually set a image token for GPT4V so that we can search for it
         # and split the text and image
         # Here we just use the same token as llava for convenient
+        if mm_per_prompt is None and max_images!=0 and max_videos!=0 and max_audios!=0:
+            mm_per_prompt = {"image": max_images, "video": max_videos, "audio": max_audios}
+        elif mm_per_prompt is None and max_images!=0 and max_videos!=0 and max_audios==0:
+            mm_per_prompt = {"image": max_images, "video": max_videos}
+        elif mm_per_prompt is None and max_images!=0 and max_videos==0 and max_audios!=0:
+            mm_per_prompt = {"image": max_images, "audio": max_audios}
+        elif mm_per_prompt is None and max_images==0 and max_videos!=0 and max_audios!=0:
+            mm_per_prompt = {"video": max_videos, "audio": max_audios}
+        elif mm_per_prompt is None and max_images==0 and max_videos==0 and max_audios==0:
+            mm_per_prompt = {}
+        elif mm_per_prompt is not None:
+            pass
+        else:
+            raise ValueError("specify mm_per_prompt or max_images, max_videos, max_audios")
+        eval_logger.info(f"mm_per_prompt: {mm_per_prompt}")
         self.model_version = model_version
         self.max_images = max_images
         self.max_frame_num = max_frame_num
@@ -59,7 +75,7 @@ class VLLM(lmms):
             model=self.model_version,
             tensor_parallel_size=tensor_parallel_size,
             gpu_memory_utilization=gpu_memory_utilization,
-            limit_mm_per_prompt={"image": max_images, "video": max_videos, "audio": max_audios},
+            limit_mm_per_prompt=mm_per_prompt,
             trust_remote_code=trust_remote_code,
         )
         if accelerator.num_processes > 1:
