@@ -1,0 +1,29 @@
+dataset_path: CohereLabs/include-base-44
+dataset_name: Chinese
+task: include-zh
+test_split: test
+output_type: generate_until
+
+process_docs: !function utils.process_docs
+doc_to_text: !function utils.doc_to_text
+doc_to_target: !function utils.doc_to_target
+process_results: !function utils.process_results
+
+
+generation_kwargs:
+  max_new_tokens: 1024
+  temperature: 0
+  do_sample: false
+
+metric_list:
+  - metric: accuracy # The name of the metric to use for evaluation. The process_results function should return the metric name and the metric value, in format of `{metric_name: results}`. And the aggregation function will use the results to get the final score.
+    aggregation: mean # The name of the aggregation function to use for evaluation.
+    higher_is_better: true # 
+
+metadata:
+  - version: 0.0
+
+lmms_eval_specific_kwargs:
+  default:
+    pre_prompt: "For the given Multiple Choice Question Answer below, analyze the question and answer strictly from one of the options below. End your answer with 'Final Answer: <your answer>' where <your answer> is strictly the choice letter only."
+    post_prompt: ""
