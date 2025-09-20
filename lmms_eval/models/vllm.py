@@ -25,6 +25,7 @@ NUM_SECONDS_TO_SLEEP = 5
 try:
     from vllm import LLM, SamplingParams
 except ImportError:
+    eval_logger.error("vllm is not installed. Please install VLLM to use this model.")
     vllm = None
 
 
