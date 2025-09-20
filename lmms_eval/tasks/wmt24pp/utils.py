@@ -1,5 +1,5 @@
 import numpy as np
-from lmms_eval.tasks.multi30k.comet_utils.comet import RefCOMET
+from lmms_eval.tasks.wmt24pp.comet_utils.comet import RefCOMET
 
 def process_docs(docs):
     # docs = docs.select(range(10))

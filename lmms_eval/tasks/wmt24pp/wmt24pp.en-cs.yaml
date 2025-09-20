@@ -4,7 +4,7 @@ test_split: "train"
 dataset_name: "en-cs_CZ"
 
 output_type: generate_until
-# process_docs: !function utils.process_docs
+process_docs: !function utils.process_docs
 doc_to_visual: !function utils.doc_to_visual
 doc_to_text: !function utils.doc_to_text
 doc_to_target: "cs"
