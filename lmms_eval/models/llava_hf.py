@@ -204,7 +204,7 @@ class LlavaHf(lmms):
             else:
                 continuation = doc_to_target(self.task_dict[task][split][doc_id])
             visuals = [doc_to_visual(self.task_dict[task][split][doc_id])]
-            if visuals != [None]:
+            if visuals != [None] or visuals != []:
                 visuals = self.flatten(visuals)
                 image_tokens = [DEFAULT_IMAGE_TOKEN] * len(visuals)
                 image_tokens = " ".join(image_tokens)
@@ -292,9 +292,11 @@ class LlavaHf(lmms):
             task = task[0]
             split = split[0]
             visuals = [doc_to_visual[0](self.task_dict[task][split][ids]) for ids in doc_id]
-            visuals = self.flatten(visuals)
-            if len(visuals) == 0:
+            if visuals != [None] or visuals != [] or visuals != [[]]:
+                visuals = self.flatten(visuals)
+            if len(visuals) == 0 or visuals == [None] or visuals == [[]]:
                 task_type = "text"
+                visuals = []
             elif isinstance(visuals[0], PIL.Image.Image):
                 task_type = "image"
             elif isinstance(visuals[0], str):
@@ -339,25 +341,26 @@ class LlavaHf(lmms):
 
             # if self.accelerator.is_main_process and doc_id[0] % 100 == 0:
                 # eval_logger.debug(f"Prompt for doc ID {doc_id[0]}:\n\n{text}\n")
-            visual_tokens = text.count("<image>")
-            num_images = len(visuals)
+            if task_type != "text":
+                visual_tokens = text.count("<image>")
+                num_images = len(visuals)
 
-            if visual_tokens != num_images:
-                eval_logger.warning(f"Visual tokens {visual_tokens} do not match number of images {num_images}. Replacing with {num_images} images tokens.")
-                # replace "<image>" with nb * images tokens FIXME: -> mess
-                # Remove all <image> tokens with any surrounding newlines
-                text_replaced = re.sub(r'\n?<image>\n?', '', text)
-                # text = text.replace("<image>\n", "")
-                # text = text.replace("\n<image>", "")
-                # text = text.replace("<image>\n", "")
-                # text = text.replace("<image>", "")
-                # text = text.replace("<start_of_turn>user\n", "<start_of_turn>user\n" + " ".join(["<image>"] * num_images) + "\n")
-                text_final = re.sub(
-                    r'(<start_of_turn>user\n)',           # Group 1: captures "<start_of_turn>user\n"
-                    r'\1' + ' '.join(['<image>'] * num_images) + '\n',  # Replace with: captured group + image tokens
-                    text_replaced
-                )
-                text=text_final
+                if visual_tokens != num_images:
+                    eval_logger.warning(f"Visual tokens {visual_tokens} do not match number of images {num_images}. Replacing with {num_images} images tokens.")
+                    # replace "<image>" with nb * images tokens FIXME: -> mess
+                    # Remove all <image> tokens with any surrounding newlines
+                    text_replaced = re.sub(r'\n?<image>\n?', '', text)
+                    # text = text.replace("<image>\n", "")
+                    # text = text.replace("\n<image>", "")
+                    # text = text.replace("<image>\n", "")
+                    # text = text.replace("<image>", "")
+                    # text = text.replace("<start_of_turn>user\n", "<start_of_turn>user\n" + " ".join(["<image>"] * num_images) + "\n")
+                    text_final = re.sub(
+                        r'(<start_of_turn>user\n)',           # Group 1: captures "<start_of_turn>user\n"
+                        r'\1' + ' '.join(['<image>'] * num_images) + '\n',  # Replace with: captured group + image tokens
+                        text_replaced
+                    )
+                    text=text_final
                 #print("After: ", text)
                 #import pdb; pdb.set_trace()
             if task_type == "video":

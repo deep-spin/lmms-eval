@@ -5,6 +5,7 @@ test_split: test
 output_type: generate_until
 
 process_docs: !function utils.process_docs
+doc_to_visual: !function utils.doc_to_visual
 doc_to_text: !function utils.doc_to_text
 doc_to_target: !function utils.doc_to_target
 process_results: !function utils.process_results
