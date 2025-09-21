@@ -92,6 +92,9 @@ def extract_final_answer(text: str) -> str:
     # e.g: uquê de rosas brancas ao redor. Portanto, a resposta correta é:\n\nA) Nossa Senhora de Fátima
     pattern_case4 = re.compile(r'(?m)^\s*\(?([A-Za-z])\)?\s*\)', re.MULTILINE)
     text = text.strip()
+
+    # Case 5: match the first occurence of a capital letter followed by a parenthesis inside sentence like: "The correct answer is A) but blah blah blah C) "
+    pattern_case5 = re.compile(r'\b([A-Z])\)')
     
     # Case 1
     match1 = pattern_case1.match(text)
@@ -112,6 +115,11 @@ def extract_final_answer(text: str) -> str:
     match4 = pattern_case4.search(text)
     if match4:
         return match4.group(1).lower().strip()
+
+    # Case 5
+    match5 = pattern_case5.search(text)
+    if match5:
+        return match5.group(1).lower().strip()
     
     logger.warning(f"No valid answer letter found in: {text!r}")
     return None
