@@ -10,4 +10,11 @@ task:
   - wmt24pp.en-pt
   - wmt24pp.en-ru
   - wmt24pp.en-zh
+  - wmt24pp.en-hi
+  - wmt24pp.en-pl
+  - wmt24pp.en-ja
+  - wmt24pp.en-sv
+
+
+
 

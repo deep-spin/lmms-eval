@@ -4,6 +4,7 @@ from lmms_eval.tasks.multi30k.comet_utils.comet import RefCOMET
 def process_docs(docs):
     # docs = docs.select(range(10))
     docs = docs.filter(lambda x: x["is_bad_source"] != "true")
+    #docs = docs.select(range(20))
     return docs
 
 def doc_to_text(doc, lmms_eval_specific_kwargs):

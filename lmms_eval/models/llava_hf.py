@@ -94,6 +94,8 @@ class LlavaHf(lmms):
         config = AutoConfig.from_pretrained(pretrained)
         self.max_frames_num = max_frames_num
         model_type = getattr(config, "model_type", "llava")
+        if model_type == "gemma2":
+            model_type = "llava_next"
         model_type = model_map[model_type]
         self._model = model_type.from_pretrained(pretrained, revision=revision, torch_dtype=dtype, device_map=self.device_map, trust_remote_code=trust_remote_code, attn_implementation=attn_implementation)
         self._model.to(self._device)

@@ -1,13 +1,13 @@
 dataset_path: google/wmt24pp
-task: "wmt24pp.en-nl"
+task: "wmt24pp.en-ja"
 test_split: "train"
-dataset_name: "en-nl_NL"
+dataset_name: "en-ja_JP"
 
 output_type: generate_until
 process_docs: !function utils.process_docs
 doc_to_visual: !function utils.doc_to_visual
 doc_to_text: !function utils.doc_to_text
-doc_to_target: "nl"
+doc_to_target: "ja"
 
 generation_kwargs:
   max_new_tokens: 4096
@@ -30,5 +30,5 @@ metadata:
 
 lmms_eval_specific_kwargs:
   default:
-    pre_prompt: "Translate the following English source text to Duetch.\nEnglish:"
-    post_prompt: "Duetch:"
+    pre_prompt: "Translate the following English source text to Japanese.\nEnglish:"
+    post_prompt: "Japanese:"
