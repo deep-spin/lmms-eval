@@ -38,7 +38,7 @@ class Qwen2_5_VL(lmms):
         self,
         pretrained: str = "Qwen/Qwen2.5-VL-3B-Instruct",
         device: Optional[str] = "cuda",
-        device_map: Optional[str] = "auto",
+        device_map: Optional[str] = "cuda",
         batch_size: Optional[Union[int, str]] = 1,
         use_cache=True,
         use_flash_attention_2: Optional[bool] = False,
@@ -82,6 +82,7 @@ class Qwen2_5_VL(lmms):
             ).eval()
         else:
             self._model = Qwen2_5_VLForConditionalGeneration.from_pretrained(pretrained, torch_dtype="auto", device_map=self.device_map).eval()
+            self._model.to(self.device)
         self.processor = AutoProcessor.from_pretrained(pretrained, max_pixels=max_pixels, min_pixels=min_pixels)
         self.max_pixels = max_pixels
         self.min_pixels = min_pixels
@@ -157,7 +158,7 @@ class Qwen2_5_VL(lmms):
         res = []
         conversation = []
         pbar = tqdm(total=len(requests), disable=(self.rank != 0), desc="Model Responding")
-        for contexts, doc_to_target, doc_to_visual, doc_id, task, split in [reg.args for reg in requests]:
+        for context, doc_to_target, doc_to_visual, doc_id, task, split in [reg.args for reg in requests]:
             # encode, pad, and truncate contexts for this batch
             if type(doc_to_target) == str:
                 continuation = doc_to_target
@@ -165,29 +166,25 @@ class Qwen2_5_VL(lmms):
                 continuation = doc_to_target(self.task_dict[task][split][doc_id])
             visuals = [doc_to_visual(self.task_dict[task][split][doc_id])]
             visuals = self.flatten(visuals)
-            image_sizes = [[visual.size[0], visual.size[1]] for visual in visuals]
+            
             message = [{"role": "system", "content": "You are Qwen, created by Alibaba Cloud. You are a helpful assistant."}]
 
             if len(visuals) > 0:
-                visual = visuals[i] if i < len(visuals) else None
+                visual = visuals[0] if len(visuals) > 0 else None
                 if isinstance(visual, str) and visual.endswith((".mp4", ".avi", ".mov")):  # Video file
-                    if self.use_custom_video_loader:
-                        visual = read_video_pyav_base64(visual, num_frm=self.max_num_frames, fps=self.fps, img_format="JPEG", max_image_size=self.max_image_size)
-                        image_contents = list(map(lambda x: f"data:image/jpeg;base64,{x}", visual))
-                        message.append({"role": "user", "content": [{"type": "video", "video": image_contents}, {"type": "text", "text": context}]})
-                    else:
-                        vr = decord.VideoReader(visual)
-                        first_frame = vr[0].asnumpy()
-                        height, width = first_frame.shape[:2]
-                        # max_pixels = height * width
-                        message.append({"role": "user", "content": [{"type": "video", "video": visual, "max_pixels": 360 * 420}, {"type": "text", "text": context}]})
-                elif isinstance(visual, Image.Image):  # Single image
+                    raise NotImplementedError("Video files are not supported for Qwen2.5_VL")
+                if isinstance(visual, Image.Image):  # Single image
                     base64_image = visual.convert("RGB")
                     buffer = BytesIO()
                     base64_image.save(buffer, format="JPEG")
                     base64_bytes = base64.b64encode(buffer.getvalue())
                     base64_string = base64_bytes.decode("utf-8")
-                    message.append({"role": "user", "content": [{"type": "image", "image": f"data:image/jpeg;base64,{base64_string}"}, {"type": "text", "text": context}]})
+                    message.append({
+                    "role": "user",
+                    "content": [{"type": "image", "image": f"data:image/jpeg;base64,{base64_string}"},
+                                {"type": "text", "text": context}]
+                })
+
                 elif isinstance(visual, (list, tuple)) and all(isinstance(v, Image.Image) for v in visual):  # Multiple images
                     image_content = []
                     for v in visual:
@@ -197,15 +194,16 @@ class Qwen2_5_VL(lmms):
                         base64_bytes = base64.b64encode(buffer.getvalue())
                         base64_string = base64_bytes.decode("utf-8")
                         image_content.append({"type": "image", "image": f"data:image/jpeg;base64,{base64_string}"})
-                    message.append({"role": "user", "content": image_content + [{"type": "text", "text": contexts}]})
+                    message.append({"role": "user", "content": image_content + [{"type": "text", "text": context}]})
                 else:
-                    message.append({"role": "user", "content": [{"type": "text", "text": contexts}]})
+                    message.append({"role": "user", "content": [{"type": "text", "text": context}]})
             else:
-                message.append({"role": "user", "content": [{"type": "text", "text": contexts}]})
+                message.append({"role": "user", "content": [{"type": "text", "text": context}]})
 
-            
+            # --- Encode context ---
             text = self.processor.apply_chat_template(message, tokenize=False, add_generation_prompt=True)
             image_inputs, video_inputs = process_vision_info(message)
+            
             context_inputs = self.processor(
                 text=[text],
                 images=image_inputs,
@@ -214,11 +212,10 @@ class Qwen2_5_VL(lmms):
                 padding=True,
                 return_tensors="pt",
             )
-            if self.device_map == "auto":
-                context_inputs = context_inputs.to("cuda")
-            else:
-                context_inputs = context_inputs.to(self.device)
+            # move to device
+            context_inputs = context_inputs.to(self.device)
 
+            # --- Add continuation ---
             message.append({"role": "assistant", "content": continuation})
             text_output = self.processor.apply_chat_template(message, tokenize=False, add_generation_prompt=False)
             image_inputs, video_inputs = process_vision_info(message)
@@ -229,6 +226,7 @@ class Qwen2_5_VL(lmms):
                 padding=True,
                 return_tensors="pt",
             )
+            inputs = inputs.to(self.device)
             pad_token_id = self.tokenizer.pad_token_id
             labels = inputs.input_ids.clone()
             labels[0, : context_inputs.input_ids.shape[1]] = -100

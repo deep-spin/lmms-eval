@@ -23,7 +23,7 @@ warnings.filterwarnings("ignore")
 
 from loguru import logger as eval_logger
 
-DEFAULT_IMAGE_TOKEN = "<image>"
+DEFAULT_IMAGE_TOKEN = "<image_soft_token>"
 DEFAULT_VIDEO_TOKEN = "<video>"
 
 # Default chat for llava-hf/llava-1.5 models: https://huggingface.co/collections/llava-hf/llava-15-65f762d5b6941db5c2ba07e0
@@ -88,6 +88,7 @@ class Gemma3(lmms):
         model_type = getattr(config, "model_type", "gemma3")
         model_type = model_map[model_type]
         self._model = model_type.from_pretrained(pretrained, revision=revision, torch_dtype=dtype, device_map=self.device_map, trust_remote_code=trust_remote_code, attn_implementation=attn_implementation)
+        self._model = self._model.to(self._device)
 
         self.pretrained = pretrained
         self._image_processor = AutoProcessor.from_pretrained(pretrained, revision=revision, trust_remote_code=trust_remote_code)
@@ -198,13 +199,19 @@ class Gemma3(lmms):
             visuals = [doc_to_visual(self.task_dict[task][split][doc_id])]
             if visuals != [None]:
                 visuals = self.flatten(visuals)
-                image_tokens = [DEFAULT_IMAGE_TOKEN] * len(visuals)
-                image_tokens = " ".join(image_tokens)
-                context = f"{image_tokens}\n{context}"
-            else:
-                visuals = None
-            # Apply chat template
-            messages = [{"role": "user", "content": context}, {"role": "assistant", "content": continuation}]
+                #image_tokens = [DEFAULT_IMAGE_TOKEN] * len(visuals)
+                #image_tokens = " ".join(image_tokens)
+                #context = f"{image_tokens}\n{context}"
+            
+            # when we have one image but no image tokens
+            
+            messages = [
+                {"role": "user", "content": [
+                    {"type": "image"}, # just onced
+                    {"type": "text", "text": context}
+                ]},
+                {"role": "assistant", "content": continuation}
+            ]
             if self.chat_template is not None:
                 self.tokenizer.chat_template = self.chat_template
                 prompt = self.tokenizer.apply_chat_template(messages[:-1], tokenize=False, add_generation_prompt=True)
@@ -216,8 +223,14 @@ class Gemma3(lmms):
                 self.tokenizer.chat_template = VICUNA_CHAT_TEMPLATE
                 prompt = self.tokenizer.apply_chat_template(messages[:-1], tokenize=False, add_generation_prompt=True)
                 prompt_and_continuation = self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=False)
+
+            # --- FIX: Ensure image tokens remain in final prompt ---
+            # print(f"prompt: {prompt_and_continuation}",len(visuals))
+            
             formatted_contexts = [prompt] #input prompt only
             formatted_continuation = [prompt_and_continuation] #input prompt along with answer (continuation)
+            #import pdb; pdb.set_trace()
+            #  check if the formatted_continuation has the image tokens
             model_inputs = self._image_processor(text=formatted_continuation, images=visuals, return_tensors="pt").to(self._device, self.model.dtype)
             labels = model_inputs["input_ids"].clone()
             contxt_id = self._image_processor(text=formatted_contexts,images=visuals, return_tensors="pt")["input_ids"]
@@ -351,7 +364,9 @@ class Gemma3(lmms):
             visual_tokens = text.count("<start_of_image>")
             num_images = len(visuals)
 
+
             if visual_tokens != num_images:
+                
                 eval_logger.warning(f"Visual tokens {visual_tokens} do not match number of images {num_images}. Replacing with {num_images} images tokens.")
                 # replace "<start_of_image>" with nb * images tokens FIXME: -> mess
                 # Remove all <start_of_image> tokens with any surrounding newlines

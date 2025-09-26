@@ -4,11 +4,11 @@ task:
   - alm-bench-es
   - alm-bench-fr
   - alm-bench-it
+  - alm-bench-pt
+  - alm-bench-en
   - alm-bench-ko
   - alm-bench-nl
   - alm-bench-ru
-  - alm-bench-en
-  - alm-bench-pt
   - alm-bench-zhs
   - alm-bench-zht
   - alm-bench-is
