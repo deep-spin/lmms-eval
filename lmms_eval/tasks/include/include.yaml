@@ -1,0 +1,15 @@
+group: include
+task:
+  - include-zh
+  - include-nl
+  - include-fr
+  - include-de
+  - include-hi
+  - include-it
+  - include-ja
+  - include-ko
+  - include-pl
+  - include-pt
+  - include-ru
+  - include-uk
+  - include-es

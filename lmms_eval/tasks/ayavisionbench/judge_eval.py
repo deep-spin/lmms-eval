@@ -64,8 +64,7 @@ def load_aya_vision_bench_data(language):
         "zh": "zho_Hans",
         "gr": "ell_Grek",
         "vi": "vie_Latn",
-        "ar": "ara_Arab",
-        "he": "heb_Hebr",
+        "ar": "arb_Arab",
     }
     dataset = load_dataset("CohereForAI/AyaVisionBench",name=mapping_language_to_dataset_name[language],split="test")
     logger.info(f"Loaded Aya Vision Bench dataset for language: {language}")
