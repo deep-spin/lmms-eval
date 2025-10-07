@@ -79,6 +79,13 @@ def escaped_split(text, sep_char, maxsplit=-1):
 
     return re.split(r"(?<!\\)" + sep_char, text, maxsplit)
 
+## final answer string exraction when using this parsing format
+def extract_final_answer(text):
+    match = re.search(r'\n*Final Answer:\s*(.*)', text)
+    if match:
+        return match.group(1)
+    else:
+        return text
 
 def handle_arg_string(arg):
     if arg.lower() == "true":
@@ -639,7 +646,8 @@ def load_yaml_config(yaml_path=None, yaml_config=None, yaml_dir=None, mode="full
 
     if yaml_dir is None:
         yaml_dir = os.path.dirname(yaml_path)
-
+    # breakpoint()
+    
     assert yaml_dir is not None
     assert yaml_config is not None
 

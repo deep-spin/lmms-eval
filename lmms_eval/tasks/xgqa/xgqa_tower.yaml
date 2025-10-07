@@ -1,0 +1,8 @@
+group: xgqa
+task:
+  - xgqa_de
+  - xgqa_en
+  - xgqa_ko
+  - xgqa_pt
+  - xgqa_ru
+  - xgqa_zh

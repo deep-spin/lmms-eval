@@ -1,0 +1,15 @@
+tag: "blink"
+dataset_path: BLINK-Benchmark/BLINK
+test_split: "val"
+
+doc_to_text: !function utils.blink_doc_to_text
+doc_to_target: !function utils.blink_doc_to_target
+doc_to_visual: !function utils.blink_doc_to_visual
+process_results: !function utils.blink_process_results
+
+metric_list:
+  - metric: blink_acc
+    aggregation: !function utils.blink_aggregation
+    higher_is_better: true
+
+output_type: "generate_until"

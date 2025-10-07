@@ -42,6 +42,7 @@ class NVLM_D(lmms):
         trust_remote_code: Optional[bool] = True,
         #attn_implementation: Optional[str] = best_fit_attn_implementation,
         add_system_prompt: Optional[str] = None,
+        tag: Optional[str] = None,
         device_map: str = "",
         use_cache: bool = True,
         **kwargs,
@@ -50,12 +51,15 @@ class NVLM_D(lmms):
         assert kwargs == {}, f"Unexpected kwargs: {kwargs}"
 
         accelerator = Accelerator()
-        if accelerator.num_processes > 1 and device_map == "":
+        if accelerator.num_processes > 1:
             self._device = torch.device(f"cuda:{accelerator.local_process_index}")
             self.device_map = f"cuda:{accelerator.local_process_index}"
-        else:
+        elif accelerator.num_processes == 1 and device_map == "auto":
             self._device = torch.device(device)
             self.device_map = device_map
+        else:
+            self._device = torch.device(f"cuda:{accelerator.local_process_index}")
+            self.device_map = f"cuda:{accelerator.local_process_index}"
 
         if isinstance(dtype, str) and dtype != "auto":
             dtype = getattr(torch, dtype)
@@ -73,14 +77,14 @@ class NVLM_D(lmms):
             revision=revision,
             trust_remote_code=trust_remote_code
         )
-
         self._tokenizer = self._processor.tokenizer
         self._config = self._model.config
         self.batch_size_per_gpu = int(batch_size)
         self.use_cache = use_cache
         self.add_system_prompt = add_system_prompt
+        self.tag = tag
         # Handle distributed setup
-        if accelerator.num_processes > 1 and device_map == "":
+        if accelerator.num_processes > 1:
             assert accelerator.distributed_type in [DistributedType.FSDP, DistributedType.MULTI_GPU, DistributedType.DEEPSPEED]
             
             if accelerator.distributed_type == DistributedType.DEEPSPEED:
@@ -191,7 +195,7 @@ class NVLM_D(lmms):
         for chunk in chunks:
             contexts, all_gen_kwargs, doc_to_visuals, doc_id, tasks, splits = zip(*chunk)
             visuals = [doc_to_visual(self.task_dict[task][split][ids]) for ids, task, split, doc_to_visual in zip(doc_id, tasks, splits, doc_to_visuals)]
-            
+
             # Use the generation kwargs from the first request in the batch
             gen_kwargs = all_gen_kwargs[0]
             
@@ -228,23 +232,32 @@ class NVLM_D(lmms):
             assert self.batch_size_per_gpu == 1, "Do not support batch_size_per_gpu > 1 for now"
             context = contexts[0]
             visual = visuals[0]
-            # TODO: handle multiple images / understand the `visuals` object
             if isinstance(visual, list):
-                if len(visual) > 1:
-                    eval_logger.warning("More than one image is not supported for now... Using the first one")
-                visual = visual[0]
-            
-            if DEFAULT_IMAGE_TOKEN not in context:
-                context = f"{DEFAULT_IMAGE_TOKEN}\n{context}"
+                if len(visual) == 0:
+                    eval_logger.warning("Found Sample with no image...")
+                    visual = None
+                elif len(visual) > 1:
+                    eval_logger.warning("More than one image is not supported for now... Using the first one for now.")
+                    visual = visual[0]
+                else:
+                    visual = visual[0]
                 
+            if DEFAULT_IMAGE_TOKEN not in context and visual is not None:
+                context = f"{DEFAULT_IMAGE_TOKEN}\n{context}"
+            
+            if self.tag:
+                context = f"{self.tag} " + context
             # create chat object and apply template
             chat = [{"role": "user", "content": context}]
             if self.add_system_prompt is not None:
                 chat.insert(0, {"role": "system", "content": self.add_system_prompt})
             prompt = self._tokenizer.apply_chat_template(chat, tokenize=False, add_generation_prompt=True)
-
             # Process inputs through the processor
-            inputs = self._processor(images=[visual], text=[prompt], return_tensors="pt")
+            if visual is None:
+                # TODO: handle this case where we have no image!
+                inputs = self._processor(images=[], text=[prompt], return_tensors="pt")
+            else:
+                inputs = self._processor(images=[visual], text=[prompt], return_tensors="pt")
             inputs = {k: v.to(self.device) for k, v in inputs.items()}
 
             # Generate outputs

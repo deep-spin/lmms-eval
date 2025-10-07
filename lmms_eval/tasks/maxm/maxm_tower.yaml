@@ -1,0 +1,5 @@
+group : maxm
+task:
+  - maxm_en
+  - maxm_fr
+  - maxm_zh

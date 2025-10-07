@@ -1,0 +1,13 @@
+group: xmmmu
+task:
+- mmmu_Arabic_val
+- mmmu_French_val
+- mmmu_English_val
+- mmmu_Hindi_val
+- mmmu_Indonesian_val
+- mmmu_Japanese_val
+- mmmu_Portuguese_val
+metric_list:
+  - metric: mmmu_acc
+    aggregation: !function utils.mmmu_aggregate_results
+    higher_is_better: true

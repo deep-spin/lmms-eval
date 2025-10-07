@@ -1,0 +1,5 @@
+include: blink.yaml
+task: blink_multiview_reasoning
+dataset_name: Multi-view_Reasoning
+
+process_docs: !function utils.process_docs

@@ -23,6 +23,15 @@ with open(Path(__file__).parent / "_default_template_yaml", "r") as f:
     config = yaml.safe_load("".join(safe_data))
 
 
+def process_docs(docs):
+    """
+    Process documents...
+    """
+    # logger.info(f"processing docs")
+    # Process images in place
+    docs = docs.select(range(1)) # filter out some samples!
+    return docs
+
 def replace_images_tokens(input_string):
     for i in range(1, 8):
         question_text = f"<image {i}>"
@@ -75,7 +84,12 @@ def mmmu_pro_process_results(doc, results):
         index2ans, all_choices = get_multi_choice_info(ast.literal_eval(doc["options"]))
         parsed_pred = parse_multi_choice_response(pred, all_choices, index2ans)
     else:
-        parsed_pred = pred
+        # Find all "Answer: X" patterns and take the last one
+        index2ans, all_choices = get_multi_choice_info(ast.literal_eval(doc["options"]))
+        answer_matches = re.findall(r"Answer:\s*([A-Z])\b(?![A-Z])", pred)
+        parsed_pred = answer_matches[-1] if answer_matches else ""
+        #print(f"Pred: {pred[-100:]}")
+        #print(f"Parsed prediction: {parsed_pred} and answer: {doc['answer']}")
 
     mmmu_acc = {"id": doc["id"], "subject": doc["subject"], "answer": doc["answer"], "parsed_pred": parsed_pred}
     return {"mmmu_acc": mmmu_acc}

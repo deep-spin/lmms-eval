@@ -168,8 +168,9 @@ def simple_evaluate(
     if task_manager is None:
         task_manager = TaskManager(verbosity, model_name=model)
 
+    # FOR DEBUG PURPOSES -> COMMENT THIS
     task_dict = get_task_dict(tasks, task_manager)
-
+    
     if isinstance(model, str):
         if model_args is None:
             model_args = ""
@@ -590,7 +591,7 @@ def evaluate(
             num_fewshot,
             higher_is_better,
         ) = consolidate_results(eval_tasks)
-
+  
         ### Calculate group metrics ###
         if bool(results):
             results, versions, show_group_table, *_ = consolidate_group_results(results, versions, task_dict)

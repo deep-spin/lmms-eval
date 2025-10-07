@@ -1,0 +1,5 @@
+include: blink.yaml
+task: blink_spatial_relation
+dataset_name: Spatial_Relation
+
+process_docs: !function utils.process_docs

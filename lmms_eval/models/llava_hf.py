@@ -70,10 +70,12 @@ class LlavaHf(lmms):
         batch_size: int = 1,
         trust_remote_code: Optional[bool] = False,
         attn_implementation: Optional[str] = None,
-        device_map: str = "",
+        device_map: str = "auto",
         chat_template: Optional[str] = None,
         use_cache: bool = True,
         max_frames_num: Optional[int] = 32,
+        add_system_prompt: str = None,
+        add_bos_token: bool = False,
         **kwargs,
     ) -> None:
         super().__init__()
@@ -202,11 +204,13 @@ class LlavaHf(lmms):
             else:
                 continuation = doc_to_target(self.task_dict[task][split][doc_id])
             visuals = [doc_to_visual(self.task_dict[task][split][doc_id])]
-            visuals = self.flatten(visuals)
-
-            image_tokens = [DEFAULT_IMAGE_TOKEN] * len(visuals)
-            image_tokens = " ".join(image_tokens)
-            context = f"{image_tokens}\n{context}"
+            if visuals != [None]:
+                visuals = self.flatten(visuals)
+                image_tokens = [DEFAULT_IMAGE_TOKEN] * len(visuals)
+                image_tokens = " ".join(image_tokens)
+                context = f"{image_tokens}\n{context}"
+            else:
+                visuals = None
             # Apply chat template
             messages = [{"role": "user", "content": context}, {"role": "assistant", "content": continuation}]
             if self.chat_template is not None:
@@ -220,14 +224,14 @@ class LlavaHf(lmms):
                 self.tokenizer.chat_template = VICUNA_CHAT_TEMPLATE
                 prompt = self.tokenizer.apply_chat_template(messages[:-1], tokenize=False, add_generation_prompt=True)
                 prompt_and_continuation = self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=False)
-
             formatted_contexts = [prompt]
             formatted_continuation = [prompt_and_continuation]
+            model_inputs_wo_continuation = self._image_processor(text=formatted_contexts, images=visuals, return_tensors="pt").to(self._device, self.model.dtype)
             model_inputs = self._image_processor(text=formatted_continuation, images=visuals, return_tensors="pt").to(self._device, self.model.dtype)
             labels = model_inputs["input_ids"].clone()
-            contxt_id = self._image_processor(text=formatted_contexts, return_tensors="pt")["input_ids"]
-            labels[:, : contxt_id.shape[1]] = -100
-
+            image_context_shape = model_inputs_wo_continuation["input_ids"].shape
+            labels[:, : image_context_shape[1]] = -100
+            # labels[0, -1:] = -100  # last token is also ignored
             if self.accelerator.is_main_process and doc_id % 100 == 0:
                 eval_logger.debug(f"Prompt for doc ID {doc_id}:\n\n{formatted_contexts[0]}\n")
                 eval_logger.debug(f"Prompt and continuation for doc ID {doc_id}:\n\n{formatted_continuation[0]}\n")
@@ -237,8 +241,8 @@ class LlavaHf(lmms):
             loss = outputs["loss"]
             logits = outputs["logits"]
             greedy_tokens = logits.argmax(dim=-1)
-            cont_toks = model_inputs["input_ids"][:, contxt_id.shape[1] :]  # [1, seq]
-            greedy_tokens = greedy_tokens[:, contxt_id.shape[1] : model_inputs["input_ids"].shape[1]]  # [1, seq]
+            cont_toks = model_inputs["input_ids"][:, image_context_shape[1] :]  # [1, seq]
+            greedy_tokens = greedy_tokens[:, image_context_shape[1] : model_inputs["input_ids"].shape[1]]  # [1, seq]
             max_equal = (greedy_tokens == cont_toks).all()
             res.append((float(loss.item()), bool(max_equal)))
             pbar.update(1)
@@ -319,6 +323,8 @@ class LlavaHf(lmms):
                     image_tokens = [DEFAULT_IMAGE_TOKEN] * len(visuals)
                 elif task_type == "video":
                     image_tokens = [DEFAULT_VIDEO_TOKEN] * len(visuals)
+                elif task_type == "text":
+                    image_tokens = []
                 image_tokens = " ".join(image_tokens)
                 context = f"{image_tokens}\n{context}"
             # Apply chat template
@@ -347,7 +353,8 @@ class LlavaHf(lmms):
                 inputs = self._image_processor(images=visuals, text=text, return_tensors="pt").to(self._device, self.model.dtype)
             elif task_type == "video":
                 inputs = self._image_processor(videos=visuals, text=text, return_tensors="pt").to(self._device, self.model.dtype)
-
+            elif task_type == "text":
+                inputs = self._image_processor(text=text, return_tensors="pt").to(self._device, self.model.dtype)
             gen_kwargs["image_sizes"] = [visuals[idx].size for idx in range(len(visuals))]
             if "max_new_tokens" not in gen_kwargs:
                 gen_kwargs["max_new_tokens"] = 1024
@@ -358,7 +365,8 @@ class LlavaHf(lmms):
             if "num_beams" not in gen_kwargs:
                 gen_kwargs["num_beams"] = 1
             try:
-                cont = self.model.generate(
+                # breakpoint()
+                outputs = self.model.generate(
                     **inputs,
                     do_sample=True if gen_kwargs["temperature"] > 0 else False,
                     temperature=gen_kwargs["temperature"],
@@ -367,13 +375,13 @@ class LlavaHf(lmms):
                     max_new_tokens=gen_kwargs["max_new_tokens"],
                     use_cache=self.use_cache,
                     pad_token_id=self.eot_token_id,
-                    eos_token_id=self.eot_token_id,
-                )
-                cont = cont[:, inputs["input_ids"].shape[-1] :]
+                    eos_token_id=self.eot_token_id)
+
+                outputs = outputs[:, inputs["input_ids"].shape[-1] :]
             except Exception as e:
                 eval_logger.error(f"Error {e} in generating")
-                cont = ""
-            text_outputs = self.tokenizer.batch_decode(cont, skip_special_tokens=True)[0]
+                outputs = ""
+            text_outputs = self.tokenizer.batch_decode(outputs, skip_special_tokens=True)[0]
             if self.accelerator.is_main_process and doc_id[0] % 100 == 0:
                 eval_logger.debug(f"Generated text for doc ID {doc_id[0]}:\n\n{text_outputs}\n")
 

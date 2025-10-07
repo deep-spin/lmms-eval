@@ -1,0 +1,11 @@
+group: alm_bench-all
+task:
+  - alm-bench-de
+  - alm-bench-es
+  - alm-bench-fr
+  - alm-bench-it
+  - alm-bench-ko
+  - alm-bench-nl
+  - alm-bench-pt
+  - alm-bench-ru
+  - alm-bench-en
